@@ -2,7 +2,6 @@ import { i18n, hasMaestroSound, isAttack, isSave, getSave, isCheck, redUpdateFla
 import { Utils } from "./utils.js";
 
 import { SW5E } from "../../../systems/sw5e/module/config.js";
-import { addChatMessageContextOptions } from "../../../systems/sw5e/module/chat.js";
 import { SpellCastDialog } from "../../../systems/sw5e/module/apps/spell-cast-dialog.js";
 import { AbilityTemplate } from "../../../systems/sw5e/module/pixi/ability-template.js";
 
@@ -38,19 +37,19 @@ export class CustomRoll {
 	* @param {String} rollState			null, "highest", or "lowest"
 	* @param {Boolean} triggersCrit		Whether this field marks the entire roll as critical
 	*/
-	static async rollMultiple(numRolls = 1, dice = "1d20", parts = [], data = {}, title = "", critThreshold, rollState, triggersCrit = false) {
+	static async rollMultiple(numRolls = 1, dice = "1d20", parts = [], data = {}, title = "", critThreshold, rollState, triggersCrit = false, rollType = "") {
 		let formula = [dice].concat(parts);
 		let rolls = [];
 		let tooltips = [];
-		
+
 		// Step 1 - Get all rolls
 		for (let i=0; i<numRolls; i++) {
 			rolls.push(await new Roll3D(formula.join("+"), data).roll());
 			tooltips.push(await rolls[i].getTooltip());
 		}
-		
+
 		let chatFormula = rolls[0].formula;
-		
+
 		// Step 2 - Setup chatData
 		let chatData = {
 			title: title,
@@ -58,8 +57,9 @@ export class CustomRoll {
 			tooltips: tooltips,
 			rolls: rolls,
 			rollState: rollState,
+			rollType: rollType
 		}
-		
+
 		function tagIgnored() {
 			let rollTotals = rolls.map(r => r.total);
 			let chosenResult = rollTotals[0];
@@ -69,31 +69,37 @@ export class CustomRoll {
 				} else if (rollState == "lowest") {
 					chosenResult = rollTotals.sort(function(a, b){return a-b})[0];
 				}
-				
-			
+
+
 				rolls.forEach(r => {
 					if (r.total != chosenResult) { r.ignored = true; }
 				});
 			}
 		}
-		
+
 		switch (rollState) {
 			case 'highest':
 				break;
 			case 'lowest':
 				break;
 		}
-		
+
 		tagIgnored();
-		
+
 		// Step 3 - Create HTML using custom template
 		let multiRoll = await renderTemplate("modules/betterrollssw5e/templates/red-multiroll.html", chatData);
-		
-		let output = CustomItemRoll.tagCrits(multiRoll, rolls, ".dice-total.dice-row-item", critThreshold, [20]);
-		output.isCrit = output.isCrit && triggersCrit;
+
+		let template = CustomItemRoll.tagCrits(multiRoll, rolls, ".dice-total.dice-row-item", critThreshold, [20]);
+		template.isCrit = template.isCrit && triggersCrit;
+
+		let output = {
+			html:template.html,
+			isCrit:template.isCrit,
+			data:chatData
+		};
 		return output;
 	}
-	
+
 	static getRollState(args) {
 		let adv = args.adv || 0;
 		let disadv = args.disadv || 0;
@@ -102,7 +108,7 @@ export class CustomRoll {
 			else if (adv < disadv) { return "lowest"; }
 		} else { return null; }
 	}
-	
+
 	// Returns an {adv, disadv} object when given an event
 	static eventToAdvantage(ev) {
 		let output = {adv:0, disadv:0};
@@ -110,31 +116,31 @@ export class CustomRoll {
 		if (ev.ctrlKey) { output.disadv = 1; }
 		return output;
 	}
-	
-	
+
+
 	// Creates a chat message with the requested skill check.
 	static async fullRollSkill(actor, skill, params) {
 		let skl = actor.data.data.skills[skill],
 			label = sw5e.skills[skill];
-			
+
 		let wd = getWhisperData();
-		
+
 		let multiRoll = await CustomRoll.rollSkillCheck(actor, skl, params);
-		
+
 		let titleImage = (actor.data.img == "icons/svg/mystery-man.svg") ? actor.data.token.img : actor.data.img;
-		
+
 		let titleTemplate = await renderTemplate("modules/betterrollssw5e/templates/red-header.html", {
 			item: {
 				img: titleImage,
 				name: `${i18n(label)}`
 			}
 		});
-		
+
 		let content = await renderTemplate("modules/betterrollssw5e/templates/red-fullroll.html", {
 			title: titleTemplate,
-			templates: [multiRoll["html"]]
+			templates: [multiRoll]
 		});
-		
+
 		let chatData = {
 			user: game.user._id,
 			content: content,
@@ -148,54 +154,54 @@ export class CustomRoll {
 			blind: wd.blind,
 			sound: CONFIG.sounds.dice
 		};
-		
+
 		if (wd.whisper) { chatData.whisper = wd.whisper; }
-		
+
 		// Output the rolls to chat
 		ChatMessage.create(chatData);
 	}
-	
+
 	// Rolls a skill check through a character
 	static async rollSkillCheck(actor, skill, params = {}) {
 		let parts = ["@mod"],
-			data = {mod: skill.mod},
+			data = {mod: skill.total},
 			flavor = null;
-			
+
 		const skillBonus = getProperty(actor, "data.data.bonuses.abilities.skill");
 		if (skillBonus) {
 			parts.push("@skillBonus");
 			data["skillBonus"] = skillBonus;
 		}
-		
+
 		let d20String = "1d20";
 		if (getProperty(actor, "data.flags.sw5e.halflingLucky")) {
 			d20String = "1d20r<2";
 		}
-		
+
 		let rollState = params ? CustomRoll.getRollState(params) : null;
-		
+
 		let numRolls = game.settings.get("betterrollssw5e", "d20Mode");
 		if (rollState && numRolls == 1) {
 			numRolls = 2;
 		}
-		
+
 		return await CustomRoll.rollMultiple(numRolls, d20String, parts, data, flavor, params.critThreshold || null, rollState);
 	}
-	
+
 	/**
 	* Creates a chat message with the requested ability check or saving throw.
 	* @param {Actor5e} actor		The actor object to reference for the roll.
 	* @param {String} ability		The ability score to roll.
-	* @param {String} rollType		String of either "check" or "save" 
+	* @param {String} rollType		String of either "check" or "save"
 	*/
 	static async fullRollAttribute(actor, ability, rollType, params) {
 		let dualRoll,
 			titleString,
 			abl = ability,
 			label = sw5e.abilities[ability];
-		
+
 		let wd = getWhisperData();
-		
+
 		if (rollType === "check") {
 			dualRoll = await CustomRoll.rollAbilityCheck(actor, abl, params);
 			titleString = `${i18n(label)} ${i18n("br5e.chat.check")}`;
@@ -203,21 +209,21 @@ export class CustomRoll {
 			dualRoll = await CustomRoll.rollAbilitySave(actor, abl, params);
 			titleString = `${i18n(label)} ${i18n("br5e.chat.save")}`;
 		}
-		
+
 		let titleImage = ((actor.data.img == DEFAULT_TOKEN) || actor.data.img == "" || actor.data.img.includes("*")) ? (actor.token && actor.token.data ? actor.token.data.img : actor.data.token.img) : actor.data.img;
-		
+
 		let titleTemplate = await renderTemplate("modules/betterrollssw5e/templates/red-header.html", {
 			item: {
 				img: titleImage,
 				name: titleString
 			}
 		});
-		
+
 		let content = await renderTemplate("modules/betterrollssw5e/templates/red-fullroll.html", {
 			title: titleTemplate,
-			templates: [dualRoll["html"]]
+			templates: [dualRoll]
 		});
-		
+
 		let chatData = {
 			user: game.user._id,
 			content: content,
@@ -231,21 +237,21 @@ export class CustomRoll {
 			blind: wd.blind,
 			sound: CONFIG.sounds.dice
 		};
-		
+
 		if (wd.whisper) { chatData.whisper = wd.whisper; }
-		
+
 		// Output the rolls to chat
 		ChatMessage.create(chatData);
 	}
-	
+
 	static async rollAbilityCheck(actor, abl, params = {}) {
 		let parts = ["@mod"],
 			data = {mod: actor.data.data.abilities[abl].mod},
 			flavor = null;
-		
+
 		const checkBonus = getProperty(actor, "data.data.bonuses.abilityCheck");
 		const secondCheckBonus = getProperty(actor, "data.data.bonuses.abilities.check");
-		
+
 		if (checkBonus && parseInt(checkBonus) !== 0) {
 			parts.push("@checkBonus");
 			data["checkBonus"] = checkBonus;
@@ -253,62 +259,62 @@ export class CustomRoll {
 			parts.push("@secondCheckBonus");
 			data["secondCheckBonus"] = secondCheckBonus;
 		}
-		
+
 		let d20String = "1d20";
 		if (getProperty(actor, "data.flags.sw5e.halflingLucky")) {
 			d20String = "1d20r<2";
 		}
-		
+
 		let rollState = params ? CustomRoll.getRollState(params) : null;
-		
+
 		let numRolls = game.settings.get("betterrollssw5e", "d20Mode");
 		if (rollState && numRolls == 1) {
 			numRolls = 2;
 		}
-		
+
 		return await CustomRoll.rollMultiple(numRolls, d20String, parts, data, flavor, params.critThreshold || null, rollState);
 	}
-	
+
 	static async rollAbilitySave(actor, abl, params = {}) {
 		//console.log(abl);
 		let actorData = actor.data.data;
 		let parts = [];
 		let data = {mod: []};
 		let flavor = null;
-		
+
 		// Support modifiers and global save bonus
 		const saveBonus = getProperty(actorData, "bonuses.abilities.save") || null;
 		let ablData = actor.data.data.abilities[abl];
 		let ablParts = {};
 		ablParts.mod = ablData.mod !== 0 ? ablData.mod.toString() : null;
 		ablParts.prof = ((ablData.proficient || 0) * actorData.attributes.prof).toString();
-		let mods = [ablParts.mod, ablParts.prof, saveBonus]
+		let mods = [ablParts.mod, ablParts.prof, saveBonus];
 		for (let i=0; i<mods.length; i++) {
 			if (mods[i] && mods[i] !== "0") {
 				data.mod.push(mods[i]);
 			}
 		}
 		data.mod = data.mod.join("+");
-		
+
 		let d20String = "1d20";
 		if (getProperty(actor, "data.flags.sw5e.halflingLucky")) {
 			d20String = "1d20r<2";
 		}
-		
+
 		if (data.mod !== "") {
 			parts.push("@mod");
 		}
-		
+
 		let rollState = params ? CustomRoll.getRollState(params) : null;
-		
+
 		let numRolls = game.settings.get("betterrollssw5e", "d20Mode");
 		if (rollState && numRolls == 1) {
 			numRolls = 2;
 		}
-		
+
 		return await CustomRoll.rollMultiple(numRolls, d20String, parts, data, flavor, params.critThreshold || null, rollState);
 	}
-	
+
 	static newItemRoll(item, params, fields) {
 		let roll = new CustomItemRoll(item, params, fields);
 		return roll;
@@ -336,38 +342,39 @@ export class CustomItemRoll {
 		this.itemFlags = item.data.flags;
 		this.params = mergeObject(duplicate(defaultParams), params || {});	// General parameters for the roll as a whole.
 		this.fields = fields;			 									// Where requested roll fields are stored, in the order they should be rendered.
-		this.templates = [];			 									// Where finished HTML templates are stored, in the order they should be rendered.
-		
+		this.templates = [];			 									// Where finished templates are stored, in the order they should be rendered.
+
 		this.rolled = false;
 		this.isCrit = this.params.forceCrit || false;			// Defaults to false, becomes "true" when a valid attack or check first crits.
 		this.rollState = null;
-		
+
 		if (!this.params.event) { this.params.event = event; }
-		
+
 		this.checkEvent();
 		this.setRollState();
 		this.updateConfig();
 	}
-	
+
 	// Update config settings in the roll.
 	updateConfig() {
 		this.config = {
 			playRollSounds: game.settings.get("betterrollssw5e", "playRollSounds"),
 			hasMaestroSound: hasMaestroSound(this.item),
-			damageRollPlacement: game.settings.get("betterrollssw5e", "damageRollPlacement"),
-			rollTitlePlacement: game.settings.get("betterrollssw5e", "rollTitlePlacement"),
-			damageTitlePlacement: game.settings.get("betterrollssw5e", "damageTitlePlacement"),
-			damageContextPlacement: game.settings.get("betterrollssw5e", "damageContextPlacement"),
-			contextReplacesTitle: game.settings.get("betterrollssw5e", "contextReplacesTitle"),
-			contextreplacesDamage: game.settings.get("betterrollssw5e", "contextReplacesDamage"),
-			critString: game.settings.get("betterrollssw5e", "critString"),
-			critBehavior: game.settings.get("betterrollssw5e", "critBehavior"),
-			quickDefaultDescriptionEnabled: game.settings.get("betterrollssw5e", "quickDefaultDescriptionEnabled"),
-			altSecondaryEnabled: game.settings.get("betterrollssw5e", "altSecondaryEnabled"),
-			d20Mode: game.settings.get("betterrollssw5e", "d20Mode"),
+			damageRollPlacement: game.settings.get("betterrolls5e", "damageRollPlacement"),
+			rollTitlePlacement: game.settings.get("betterrolls5e", "rollTitlePlacement"),
+			damageTitlePlacement: game.settings.get("betterrolls5e", "damageTitlePlacement"),
+			damageContextPlacement: game.settings.get("betterrolls5e", "damageContextPlacement"),
+			contextReplacesTitle: game.settings.get("betterrolls5e", "contextReplacesTitle"),
+			contextreplacesDamage: game.settings.get("betterrolls5e", "contextReplacesDamage"),
+			critString: game.settings.get("betterrolls5e", "critString"),
+			critBehavior: game.settings.get("betterrolls5e", "critBehavior"),
+			quickDefaultDescriptionEnabled: game.settings.get("betterrolls5e", "quickDefaultDescriptionEnabled"),
+			altSecondaryEnabled: game.settings.get("betterrolls5e", "altSecondaryEnabled"),
+			d20Mode: game.settings.get("betterrolls5e", "d20Mode"),
+			hideDC: game.settings.get("betterrolls5e", "hideDC"),
 		};
 	}
-	
+
 	checkEvent(ev) {
 		let eventToCheck = ev || this.params.event;
 		if (!eventToCheck) { return; }
@@ -378,7 +385,7 @@ export class CustomItemRoll {
 			this.params.disadv = 1;
 		}
 	}
-	
+
 	// Sets the roll's rollState to "highest" or "lowest" if the roll has advantage or disadvantage, respectively.
 	setRollState() {
 		this.rollState = null;
@@ -389,7 +396,7 @@ export class CustomItemRoll {
 			else if (adv < disadv) { this.rollState = "lowest"; }
 		}
 	}
-	
+
 	async roll() {
 		let params = this.params,
 			item = this.item,
@@ -397,20 +404,22 @@ export class CustomItemRoll {
 			actor = item.actor,
 			flags = item.data.flags,
 			save;
-		
+
 		await redUpdateFlags(item);
-		
+
+		Hooks.call("preRollItemBetterRolls", this);
+
 		if (Number.isInteger(params.preset)) {
 			this.updateForPreset();
 		}
-		
+
 		if (!params.slotLevel) {
 			if (item.data.type === "spell") {
 				params.slotLevel = await this.configureSpell();
 				if (params.slotLevel === "error") { return "error"; }
 			}
 		}
-		
+
 		// Check to consume charges. Prevents the roll if charges are required and none are left.
 		let consumedCharge = {value:"", destroy:false};
 		if (params.useCharge) {
@@ -420,30 +429,37 @@ export class CustomItemRoll {
 				return 'error';
 			}
 		}
-		
+
 		// Converts all requested fields into templates to be entered into the chat message.
 		this.templates = await this.allFieldsToTemplates();
-		
+
 		// Show properties
 		this.properties = (params.properties) ? this.listProperties() : null;
-		
+
 		let printedSlotLevel = ( item.data.type === "spell" && this.params.slotLevel != item.data.data.level ) ? sw5e.spellLevels[this.params.slotLevel] : null;
-			
+
 		let title = (this.params.title || await renderTemplate("modules/betterrollssw5e/templates/red-header.html", {item:item, slotLevel:printedSlotLevel}));
-		
-		
-		
+
+
+
 		// Add token's ID to chat roll, if valid
 		let tokenId;
 		if (actor.token) {
 			tokenId = [canvas.tokens.get(actor.token.id).scene.id, actor.token.id].join(".");
 		}
-		
+
 		if (params.useTemplate && (item.data.type == "feat" || item.data.data.level == 0)) {
 			this.placeTemplate();
 		}
-		
-		let content = await renderTemplate("modules/betterrollssw5e/templates/red-fullroll.html", {
+
+		if (consumedCharge.destroy === true) { setTimeout(() => {item.actor.deleteOwnedItem(item.id);}, 100);}
+		this.rolled = true;
+
+		await Hooks.callAll("rollItemBetterRolls", this);
+
+		await new Promise(r => setTimeout(r, 25));
+
+		let content = await renderTemplate("modules/betterrolls5e/templates/red-fullroll.html", {
 			item: item,
 			actor: actor,
 			tokenId: tokenId,
@@ -454,12 +470,10 @@ export class CustomItemRoll {
 			properties: this.properties
 		});
 		this.content = content;
-		
-		//if (consumedCharge.destroy === true) { setTimeout(() => {item.actor.deleteOwnedItem(item.id);}, 100);}
-		this.rolled = true;
-		return content;
+
+		return this.content;
 	}
-	
+
 /*
 	CustomItemRoll(item,
 	{
@@ -488,12 +502,12 @@ export class CustomItemRoll {
 		switch (fieldType) {
 			case 'attack':
 				// {adv, disadv, bonus, triggersCrit, critThreshold}
-				return await this.rollAttack(fieldArgs[0]);
+				this.templates.push(await this.rollAttack(fieldArgs[0]));
 				break;
 			case 'toolcheck':
 			case 'tool':
 			case 'check':
-				return await this.rollTool(fieldArgs[0]);
+				this.templates.push(await this.rollTool(fieldArgs[0]));
 				break;
 			case 'damage':
 				// {damageIndex: 0, forceVersatile: false, forceCrit: false}
@@ -515,16 +529,14 @@ export class CustomItemRoll {
 					let newIndex = [index];
 					index = newIndex;
 				}
-				let templates = [];
 				for (let i=0;i<index.length;i++) {
-					templates.push(await this.rollDamage({
+					this.templates.push(await this.rollDamage({
 						damageIndex: index[i] || 0,
 						// versatile damage will only replace the first damage formula in an "all" damage request
 						forceVersatile: (i == 0 || oldIndex !== "all") ? versatile : false,
 						forceCrit: crit
 					}));
 				}
-				return templates.join("");
 				break;
 			case 'savedc':
 				// {customAbl: null, customDC: null}
@@ -533,10 +545,10 @@ export class CustomItemRoll {
 					abl = fieldArgs[0].abl;
 					dc = fieldArgs[0].dc;
 				}
-				return await this.saveRollButton({customAbl:abl, customDC:dc});
+				this.templates.push(await this.saveRollButton({customAbl:abl, customDC:dc}));
 				break;
 			case 'other':
-				if (item.data.data.formula) { return await this.rollOther(); }
+				if (item.data.data.formula) { this.templates.push(await this.rollOther()); }
 				break;
 			case 'custom':
 				/* args:
@@ -556,8 +568,9 @@ export class CustomItemRoll {
 				let rollData = duplicate(this.item.actor.data.data);
 				rollData.item = item.data.data;
 				this.addToRollData(rollData);
-				let customRoll = await CustomRoll.rollMultiple(fieldArgs[0].rolls, fieldArgs[0].formula, ["0"], rollData, fieldArgs[0].title, null, rollStates[fieldArgs[0].rollState]);
-				return customRoll.html;
+				let output = await CustomRoll.rollMultiple(fieldArgs[0].rolls, fieldArgs[0].formula, ["0"], rollData, fieldArgs[0].title, null, rollStates[fieldArgs[0].rollState], false, "custom");
+				output.type = 'custom';
+				this.templates.push(output);
 				break;
 			case 'description':
 			case 'desc':
@@ -569,38 +582,40 @@ export class CustomItemRoll {
 				fieldArgs[0] = {text: componentField + item.data.data.description.value};
 			case 'text':
 				if(fieldArgs[0].text) {
-					return `<div class="card-content br-text">${fieldArgs[0].text}</div>`;
+					this.templates.push({
+						type:'text',
+						html:`<div class="card-content br-text">${fieldArgs[0].text}</div>`,
+					});
 				}
 				break;
 			case 'flavor':
-				return this.rollFlavor(fieldArgs[0]);
+				this.templates.push(this.rollFlavor(fieldArgs[0]));
 				break;
 		}
+		return true;
 	}
-	
+
 	async allFieldsToTemplates() {
 		return new Promise(async (resolve, reject) => {
-			let templates = [];
-			
+
 			for (let i=0;i<this.fields.length;i++) {
-				let currentTemplate = await this.fieldToTemplate(this.fields[i]);
-				templates.push(currentTemplate);
+				await this.fieldToTemplate(this.fields[i]);
 			}
-			
-			resolve(templates);
+
+			resolve(this.templates);
 		});
 	}
-	
+
 	async toMessage() {
 		if (this.rolled) {
 			console.log("Already rolled!", this);
 		} else {
-		
+
 			let content = await this.roll();
 			if (content === "error") return;
-			
+
 			let wd = getWhisperData();
-					
+
 			let chatData = {
 				user: game.user._id,
 				content: this.content,
@@ -614,13 +629,15 @@ export class CustomItemRoll {
 				blind: wd.blind,
 				sound: (this.config.playRollSounds && !this.config.hasMaestroSound) ? CONFIG.sounds.dice : null,
 			};
-			
+
 			if (wd.whisper) { chatData.whisper = wd.whisper; }
-			
-				return ChatMessage.create(chatData);
+
+			await Hooks.callAll("messageBetterRolls", this, chatData);
+			let output = await ChatMessage.create(chatData);
+			return output;
 		}
 	}
-	
+
 	/*
 	* Updates the rollRequests based on the br5e flags.
 	*/
@@ -635,7 +652,9 @@ export class CustomItemRoll {
 			useCharge = false,
 			useTemplate = false,
 			fields = [];
-		
+
+
+
 		if (brFlags) {
 			// Assume new action of the button based on which fields are enabled for Quick Rolls
 			function flagIsTrue(flag) {
@@ -643,13 +662,13 @@ export class CustomItemRoll {
 				if (preset === 1) { val = "altValue"; }
 				return (brFlags[flag] && (brFlags[flag][val] == true));
 			}
-			
+
 			if (flagIsTrue("quickFlavor") && itemData.chatFlavor) { fields.push(["flavor"]); }
 			if (flagIsTrue("quickDesc")) { fields.push(["desc"]); }
 			if (flagIsTrue("quickAttack") && isAttack(item)) { fields.push(["attack"]); }
 			if (flagIsTrue("quickCheck") && isCheck(item)) { fields.push(["check"]); }
 			if (flagIsTrue("quickSave") && isSave(item)) { fields.push(["savedc"]); }
-			
+
 			switch (preset) {
 				case 0: // Quick Roll
 					if (brFlags.quickDamage && (brFlags.quickDamage.value.length > 0)) {
@@ -670,23 +689,23 @@ export class CustomItemRoll {
 			}
 			if (flagIsTrue("quickOther")) { fields.push(["other"]); }
 			if (flagIsTrue("quickProperties")) { properties = true; }
-			if (flagIsTrue("quickCharges") && this.item.hasLimitedUses) { useCharge = true; }
+			if (flagIsTrue("quickCharges") && (this.item.hasLimitedUses || this.item.type == "consumable")) { useCharge = true; }
 			if (flagIsTrue("quickTemplate")) { useTemplate = true; }
-		} else { 
+		} else {
 			//console.log("Request made to Quick Roll item without flags!");
 			fields.push(["desc"]);
 			properties = true;
 		}
-		
+
 		this.params = mergeObject(this.params, {
 			properties: properties,
 			useCharge: useCharge,
 			useTemplate: useTemplate,
 		});
-		
+
 		this.fields = fields.concat((this.fields || []).slice());
 	}
-	
+
 	/**
 	* A function for returning the properties of an item, which can then be printed as the footer of a chat card.
 	*/
@@ -695,7 +714,7 @@ export class CustomItemRoll {
 		let properties = [];
 		let data = item.data.data,
 			ad = item.actor.data.data;
-		
+
 		let range = ((data.range) && (data.range.value || data.range.units)) ? (data.range.value || "") + (((data.range.long) && (data.range.long !== 0) && (data.rangelong != data.range.value)) ? "/" +data.range.long : "") + " " + (data.range.units ? sw5e.distanceUnits[data.range.units] : "") : null;
 		let target = (data.target && data.target.type) ? i18n("Target: ").concat(sw5e.targetTypes[data.target.type]) + ((data.target.units ) && (data.target.units !== "none") ? " (" + data.target.value + " " + sw5e.distanceUnits[data.target.units] + ")" : "") : null;
 		let activation = (data.activation && (data.activation.type !== "") && (data.activation.type !== "none")) ? data.activation.cost + " " + data.activation.type : null;
@@ -720,16 +739,16 @@ export class CustomItemRoll {
 				// Spell attack labels
 				data.damageLabel = data.actionType === "heal" ? i18n("br5e.chat.healing") : i18n("br5e.chat.damage");
 				data.isAttack = data.actionType === "attack";
-				
+
 				let components = data.components,
 					componentString = "";
 				if (components.vocal) { componentString += i18n("br5e.chat.abrVocal"); }
 				if (components.somatic) { componentString += i18n("br5e.chat.abrSomatic"); }
-				if (components.material) { 
+				if (components.material) {
 					componentString += i18n("br5e.chat.abrMaterial");
 					if (data.materials.value) { componentString += " (" + data.materials.value + (data.materials.consumed ? i18n("br5e.chat.consumedBySpell") : "") + ")"; }
 				}
-				
+
 				properties = [
 					sw5e.spellSchools[data.school],
 					sw5e.spellLevels[data.level],
@@ -749,6 +768,15 @@ export class CustomItemRoll {
 					(data.duration.units) ? (data.duration.value ? data.duration.value + " " : "") + sw5e.timePeriods[data.duration.units] : null,
 					range,
 					data.target.type ? i18n("Target: ").concat(sw5e.targetTypes[data.target.type]) + ((data.target.units ) && (data.target.units !== "none") ? " (" + data.target.value + " " + sw5e.distanceUnits[data.target.units] + ")" : "") : null,
+				];
+				break;
+			case "consumable":
+				properties = [
+					data.weight ? data.weight + " " + i18n("lbs.") : null,
+					((data.activation.type !== "") && (data.activation.type !== "none")) ? (data.activation.cost ? data.activation.cost + " " : "") + dnd5e.abilityActivationTypes[data.activation.type] : null,
+					(data.duration.units) ? (data.duration.value ? data.duration.value + " " : "") + dnd5e.timePeriods[data.duration.units] : null,
+					range,
+					data.target.type ? i18n("Target: ").concat(dnd5e.targetTypes[data.target.type]) + ((data.target.units ) && (data.target.units !== "none") ? " (" + data.target.value + " " + dnd5e.distanceUnits[data.target.units] + ")" : "") : null,
 				];
 				break;
 			case "equipment":
@@ -774,7 +802,7 @@ export class CustomItemRoll {
 		let output = properties.filter(p => (p) && (p.length !== 0) && (p !== " "));
 		return output;
 	}
-	
+
 	addToRollData(data) {
 		data.classes = this.item.actor.items.reduce((obj, i) => {
 			if ( i.type === "class" ) {
@@ -784,7 +812,7 @@ export class CustomItemRoll {
 		}, {});
 		data.prof = this.item.actor.data.data.attributes.prof;
 	}
-	
+
 	/**
 	* A function for returning a roll template with crits and fumbles appropriately colored.
 	* @param {Object} args			Object containing the html for the roll and whether or not the roll is a crit
@@ -824,7 +852,7 @@ export class CustomItemRoll {
 			});
 			debug("CRITS", high);
 			debug("FUMBLES", low);
-			
+
 			if ((high > 0) && (low == 0)) $($html.find(selector)[i]).addClass("success");
 			else if ((high == 0) && (low > 0)) $($html.find(selector)[i]).addClass("failure");
 			else if ((high > 0) && (low > 0)) $($html.find(selector)[i]).addClass("mixed");
@@ -835,8 +863,8 @@ export class CustomItemRoll {
 			isCrit: isCrit
 		};
 	}
-	
-	/* 
+
+	/*
 		Rolls an attack roll for the item.
 		@param {Object} args				Object containing all named parameters
 			@param {Number} adv				1 for advantage
@@ -854,18 +882,18 @@ export class CustomItemRoll {
 			title = (this.config.rollTitlePlacement !== "0") ? i18n("br5e.chat.attack") : null,
 			parts = [],
 			rollData = duplicate(actorData);
-		
+
 		this.addToRollData(rollData);
-		
+
 		// Add critical threshold
 		let critThreshold = 20;
 		let characterCrit = 20;
 		try { characterCrit = Number(getProperty(itm, "actor.data.flags.sw5e.weaponCriticalThreshold")) || 20;  }
 		catch(error) { characterCrit = itm.actor.data.flags.sw5e.weaponCriticalThreshold || 20; }
-		
+
 		let itemCrit = Number(getProperty(itm, "data.flags.betterRollsSW5e.critRange.value")) || 20;
 		//	console.log(critThreshold, characterCrit, itemCrit);
-		
+
 		// If a specific critThreshold is set, use that
 		if (args.critThreshold) {
 			critThreshold = args.critThreshold;
@@ -877,7 +905,7 @@ export class CustomItemRoll {
 				critThreshold = Math.min(critThreshold, itemCrit);
 			}
 		}
-		
+
 		// Add ability modifier bonus
 		let abl = "";
 		if (itm.data.type == "spell") {
@@ -890,88 +918,89 @@ export class CustomItemRoll {
 		} else {
 			abl = itemData.ability || "";
 		}
-		
+
 		if (abl.length > 0) {
 			parts.push(`@abl`);
 			rollData.abl = actorData.abilities[abl].mod;
 			//console.log("Adding Ability mod", abl);
 		}
-		
+
 		// Add proficiency, expertise, or Jack of all Trades
 		if ( itm.data.type == "spell" || itm.data.type == "feat" || itemData.proficient ) {
 			parts.push(`@prof`);
 			rollData.prof = Math.floor(actorData.attributes.prof);
 			//console.log("Adding Proficiency mod!");
 		}
-		
+
 		// Add item's bonus
 		if ( itemData.attackBonus ) {
 			parts.push(`@bonus`);
 			rollData.bonus = itemData.attackBonus;
 			//console.log("Adding Bonus mod!", itemData);
 		}
-		
+
 		// Add custom situational bonus
 		if (args.bonus) {
 			parts.push(args.bonus);
 		}
-		
+
 		if (actorData.bonuses && isAttack(itm)) {
 			let actionType = `${itemData.actionType}`;
 			if (actorData.bonuses[actionType].attack) {
 				parts.push("@" + actionType);
 				rollData[actionType] = actorData.bonuses[actionType].attack;
 			}
-		}	
-		
+		}
+
 		// Establish number of rolls using advantage/disadvantage
 		let adv = this.params.adv;
 		if (args.adv) { adv = args.adv; }
-		
+
 		let disadv = this.params.disadv;
 		if (args.disadv) { disadv = args.disadv; }
-		
+
 		let rollState = CustomRoll.getRollState({adv:args.adv, disadv:args.disadv});
-		
+
 		let numRolls = this.config.d20Mode;
-		
+
 		if (rollState) {
 			numRolls = 2;
 		}
-		
+
 		// Elven Accuracy check
 		if (numRolls == 2) {
 			if (getProperty(itm, "actor.data.flags.sw5e.elvenAccuracy") && ["dex", "int", "wis", "cha"].includes(abl)) {
 				numRolls = 3;
 			}
 		}
-		
+
 		let d20String = "1d20";
-		
+
 		// Halfling Luck check
 		if (getProperty(itm, "actor.data.flags.sw5e.halflingLucky")) {
 			d20String = "1d20r<2";
 		}
-		
-		let output = await CustomRoll.rollMultiple(numRolls, d20String, parts, rollData, title, critThreshold, rollState, args.triggersCrit);
+
+		let output = mergeObject({type:"attack"}, await CustomRoll.rollMultiple(numRolls, d20String, parts, rollData, title, critThreshold, rollState, args.triggersCrit));
 		if (output.isCrit) {
 			this.isCrit = true;
 		}
-		return output.html;
+		output.type = "attack";
+		return output;
 	}
-	
+
 	async damageTemplate ({baseRoll, critRoll, labels, type}) {
 		let baseTooltip = await baseRoll.getTooltip(),
 			templateTooltip;
-		
+
 		if (baseRoll.parts.length === 0) return;
-		
+
 		if (critRoll) {
 			let critTooltip = await critRoll.getTooltip();
 			templateTooltip = await renderTemplate("modules/betterrollssw5e/templates/red-dualtooltip.html", {lefttooltip: baseTooltip, righttooltip: critTooltip});
 		} else { templateTooltip = baseTooltip; }
-		
-		
+
+
 		let chatData = {
 			tooltip: templateTooltip,
 			lefttotal: baseRoll.total,
@@ -981,20 +1010,26 @@ export class CustomItemRoll {
 			damagebottom: labels[3],
 			formula: baseRoll.formula,
 			crittext: this.config.critString,
-			damageType:type
+			damageType:type,
+			maxRoll: Roll.maximize(baseRoll.formula).total,
+			maxCrit: critRoll ? Roll.maximize(critRoll.formula).total : null
 		};
-		
+
 		let html = {
 			html: await renderTemplate("modules/betterrollssw5e/templates/red-damageroll.html", chatData)
 		};
-		html = CustomItemRoll.tagCrits(html, baseRoll, ".red-left-die");
-		html = CustomItemRoll.tagCrits(html, critRoll, ".red-right-die");
-		
-		let output = html["html"];
-		
+		html = CustomItemRoll.tagCrits(html, baseRoll, ".red-base-die");
+		html = CustomItemRoll.tagCrits(html, critRoll, ".red-extra-die");
+
+		let output = {
+			type: "damage",
+			html: html["html"],
+			data: chatData
+		}
+
 		return output;
 	}
-	
+
 	async rollDamage({damageIndex = 0, forceVersatile = false, forceCrit = false, bonus = 0}) {
 		let itm = this.item;
 		let itemData = itm.data.data,
@@ -1005,11 +1040,11 @@ export class CustomItemRoll {
 			damageType = itemData.damage.parts[damageIndex][1],
 			isVersatile = false,
 			slotLevel = this.params.slotLevel;
-		
+
 		rollData.item = itemData;
 		this.addToRollData(rollData);
-		
-		
+
+
 		// Change first damage formula if versatile
 		if (((this.params.versatile && damageIndex === 0) || forceVersatile) && itemData.damage.versatile.length > 0) {
 			damageFormula = itemData.damage.versatile;
@@ -1017,18 +1052,18 @@ export class CustomItemRoll {
 		} else {
 			damageFormula = itemData.damage.parts[damageIndex][0];
 		}
-		
+
 		let type = itm.data.type,
 			parts = [],
 			dtype = CONFIG.betterRollsSW5e.combinedDamageTypes[damageType];
-		
+
 		let generalMod = rollData.attributes.spellcasting;
-		
+
 		// Spells don't push their ability modifier to damage by default. This is here so the user can add "+ @mod" to their damage roll if they wish.
 		if (type === "spell") {
 			abl = itemData.ability ? itemData.ability : generalMod;
 		}
-		
+
 		// Applies ability modifier on weapon and feat damage rolls, but only for the first damage roll listed on the item.
 		if ((type === "weapon" || type === "feat") && damageIndex === 0) {
 			if (type === "weapon") {
@@ -1038,11 +1073,11 @@ export class CustomItemRoll {
 				}
 			}
 		}
-		
+
 		// Users may add "+ @mod" to their rolls to manually add the ability modifier to their rolls.
 		rollData.mod = (abl !== "") ? rollData.abilities[abl].mod : 0;
 		//console.log(rollData.mod);
-		
+
 		// Prepare roll label
 		let titlePlacement = this.config.damageTitlePlacement.toString(),
 			damagePlacement = this.config.damageRollPlacement.toString(),
@@ -1054,23 +1089,23 @@ export class CustomItemRoll {
 				"2": [],
 				"3": []
 			};
-		
+
 		let titleString = "",
 			damageString = [],
 			contextString = flags.quickDamage.context[damageIndex];
-		
+
 		// Show "Healing" prefix only if it's not inherently a heal action
 		if (sw5e.healingTypes[damageType]) { titleString = ""; }
 		// Show "Damage" prefix if it's a damage roll
 		else if (sw5e.damageTypes[damageType]) { titleString += i18n("br5e.chat.damage"); }
-		
+
 		// Title
 		let pushedTitle = false;
 		if (titlePlacement !== "0" && titleString && !(replaceTitle && contextString && titlePlacement == contextPlacement)) {
 			labels[titlePlacement].push(titleString);
 			pushedTitle = true;
 		}
-		
+
 		// Context
 		if (contextString) {
 			if (contextPlacement === titlePlacement && pushedTitle) {
@@ -1079,7 +1114,7 @@ export class CustomItemRoll {
 				labels[contextPlacement].push(contextString);
 			}
 		}
-		
+
 		// Damage type
 		if (dtype) { damageString.push(dtype); }
 		if (isVersatile) { damageString.push("(" + sw5e.weaponProperties.ver + ")"); }
@@ -1087,13 +1122,13 @@ export class CustomItemRoll {
 		if (damagePlacement !== "0" && damageString.length > 0 && !(replaceDamage && contextString && damagePlacement == contextPlacement)) {
 			labels[damagePlacement].push(damageString);
 		}
-		
+
 		for (let p in labels) {
 			labels[p] = labels[p].join(" - ");
 		};
-		
+
 		if (damageIndex === 0) { damageFormula = this.scaleDamage(damageIndex) || damageFormula; }
-		
+
 		let bonusAdd = "";
 		if (damageIndex == 0 && rollData.bonuses && isAttack(itm)) {
 			let actionType = `${itemData.actionType}`;
@@ -1101,26 +1136,26 @@ export class CustomItemRoll {
 				bonusAdd = "+" + rollData.bonuses[actionType].damage;
 			}
 		}
-		
+
 		let baseDice = damageFormula + bonusAdd;
 		let baseWithParts = [baseDice];
 		if (parts) {baseWithParts = [baseDice].concat(parts);}
-		
+
 		let rollFormula = baseWithParts.join("+");
-		
+
 		let baseRoll = await new Roll3D(rollFormula, rollData).roll(),
 			critRoll = null,
 			baseMaxRoll = null,
 			critBehavior = this.params.critBehavior ? this.params.critBehavior : this.config.critBehavior;
-			
+
 		if ((forceCrit || this.isCrit) && critBehavior !== "0") {
 			critRoll = await this.critRoll(rollFormula, rollData, baseRoll);
 		}
-			
+
 		let damageRoll = await this.damageTemplate({baseRoll: baseRoll, critRoll: critRoll, labels: labels, type:damageType});
 		return damageRoll;
 	}
-	
+
 	async critRoll(rollFormula, rollData, baseRoll) {
 		let itm = this.item;
 		let critBehavior = this.params.critBehavior ? this.params.critBehavior : this.config.critBehavior;
@@ -1136,12 +1171,12 @@ export class CustomItemRoll {
 		let add = (itm.actor && savage) ? 1 : 0;
 		critRoll.alter(add);
 		critRoll.roll();
-		
+
 		// If critBehavior = 2, maximize base dice
 		if (critBehavior === "2") {
 			critRoll = Roll.maximize(critRoll.formula);
 		}
-		
+
 		// If critBehavior = 3, maximize base and crit dice
 		else if (critBehavior === "3") {
 			let maxDifference = Roll.maximize(baseRoll.formula).total - baseRoll.total;
@@ -1150,13 +1185,13 @@ export class CustomItemRoll {
 		}
 		return critRoll;
 	}
-	
+
 	scaleDamage(damageIndex, scaleInterval = null) {
 		let item = this.item;
 		let itemData = item.data.data;
 		let actorData = item.actor.data.data;
 		let spellLevel = this.params.slotLevel;
-		
+
 		// Scaling for cantrip damage by level. Affects only the first damage roll of the spell.
 		if (item.data.type === "spell" && itemData.scaling.mode === "cantrip") {
 			let parts = itemData.damage.parts.map(d => d[0]);
@@ -1172,7 +1207,7 @@ export class CustomItemRoll {
 			}
 			return formula;
 		}
-		
+
 		// Scaling for spell damage by spell slot used. Affects only the first damage roll of the spell.
 		if (item.data.type === "spell" && itemData.scaling.mode === "level" && spellLevel) {
 			let parts = itemData.damage.parts.map(d => d[0]);
@@ -1187,13 +1222,13 @@ export class CustomItemRoll {
 					formula = formula.replace(new RegExp(Roll.diceRgx, "g"), (match, nd, d) => `${Math.floor(parseInt(nd)+add)}d${d}`);
 				}
 			}
-			
+
 			return formula;
 		}
-		
+
 		return null;
 	}
-	
+
 	/*
 	Rolls the Other Formula field. Is subject to crits.
 	*/
@@ -1205,9 +1240,9 @@ export class CustomItemRoll {
 			formula = item.data.data.formula,
 			rollData = duplicate(item.actor.data.data),
 			flags = item.data.flags.betterRollsSW5e;
-		
+
 		this.addToRollData(rollData);
-		
+
 		let titlePlacement = this.config.damageTitlePlacement,
 			contextPlacement = this.config.damageContextPlacement,
 			replaceTitle = this.config.contextReplacesTitle,
@@ -1216,17 +1251,17 @@ export class CustomItemRoll {
 				"2": [],
 				"3": []
 			};
-			
+
 		// Title
 		let titleString = i18n("br5e.chat.other"),
 			contextString = flags.quickOther.context;
-		
+
 		let pushedTitle = false;
 		if (titlePlacement !== "0" && !(replaceTitle && contextString && titlePlacement == contextPlacement)) {
 			labels[titlePlacement].push(titleString);
 			pushedTitle = true;
 		}
-		
+
 		// Context
 		if (contextString) {
 			if (contextPlacement === titlePlacement && pushedTitle) {
@@ -1235,22 +1270,21 @@ export class CustomItemRoll {
 				labels[contextPlacement].push(contextString);
 			}
 		}
-		
+
 		let baseRoll = await new Roll3D(formula, rollData).roll(),
 			critRoll = null,
 			baseMaxRoll = null,
 			critBehavior = this.params.critBehavior ? this.params.critBehavior : this.config.critBehavior;
-			
+
 		if (isCrit && critBehavior !== "0") {
 			critRoll = await this.critRoll(formula, rollData, baseRoll);
 		}
-		
+
 		let damageRoll = this.damageTemplate({baseRoll: baseRoll, critRoll: critRoll, labels: labels});
 		return damageRoll;
 	}
-	
+
 	/* 	Generates the html for a save button to be inserted into a chat message. Players can click this button to perform a roll through their controlled token.
-	*	
 	*/
 	async saveRollButton({customAbl = null, customDC = null}) {
 		let item = this.item;
@@ -1260,13 +1294,19 @@ export class CustomItemRoll {
 		let saveData = getSave(item);
 		if (customAbl) { saveData.ability = saveArgs.customAbl; }
 		if (customDC) { saveData.dc = saveArgs.customDC; }
-		
-		let saveLabel = `${i18n("br5e.buttons.saveDC")} ${saveData.dc} ${sw5e.abilities[saveData.ability]}`;
-		let button = await renderTemplate("modules/betterrollssw5e/templates/red-save-button.html", {data: saveData, saveLabel: saveLabel});
-		
+
+		let hideDC = this.config.hideDC;
+		let displayedDC = (hideDC == "2") || (hideDC == "1" && actor.data.type == "npc") ? i18n("br5e.hideDC.string") : saveData.dc
+
+		let saveLabel = `${i18n("br5e.buttons.saveDC")} ${displayedDC} ${dnd5e.abilities[saveData.ability]}`;
+		let button = {
+			type: "saveDC",
+			html: await renderTemplate("modules/betterrollssw5e/templates/red-save-button.html", {data: saveData, saveLabel: saveLabel})
+		}
+
 		return button;
 	}
-	
+
 	async rollTool(preArgs) {
 		let args = mergeObject({adv: 0, disadv: 0, bonus: null, triggersCrit: true, critThreshold: null, rollState: this.rollState}, preArgs || {});
 		let itm = this.item;
@@ -1278,7 +1318,7 @@ export class CustomItemRoll {
 			rollData = duplicate(actorData);
 		rollData.item = itm;
 		this.addToRollData(rollData);
-		
+
 		// Add ability modifier bonus
 		if ( itemData.ability ) {
 			let abl = (itemData.ability),
@@ -1288,45 +1328,48 @@ export class CustomItemRoll {
 				rollData.mod = mod;
 			}
 		}
-		
+
 		// Add proficiency, expertise, or Jack of all Trades
 		if ( itemData.proficient ) {
 			parts.push(`@prof`);
 			rollData.prof = Math.floor(itemData.proficient * actorData.attributes.prof);
 			//console.log("Adding Proficiency mod!");
 		}
-		
+
 		// Add item's bonus
 		if ( itemData.bonus ) {
 			parts.push(`@bonus`);
 			rollData.bonus = itemData.bonus.value;
 			//console.log("Adding Bonus mod!");
 		}
-		
+
 		if (args.bonus) {
 			parts.push(bonus);
 		}
-		
+
 		let d20String = "1d20";
 		if (getProperty(itm, "actor.data.flags.sw5e.halflingLucky")) {
 			d20String = "1d20r<2";
 		}
-		
+
 		//(numRolls = 1, dice = "1d20", parts = [], data = {}, title, critThreshold, rollState, triggersCrit = false)
-		let output = await CustomRoll.rollMultiple(this.config.d20Mode, d20String, parts, rollData, title, args.critThreshold, args.rollState);
+		let output = await CustomRoll.rollMultiple(this.config.d20Mode, d20String, parts, rollData, title, args.critThreshold, args.rollState, args.triggersCrit);
 		if (output.isCrit && triggersCrit) {
 			this.isCrit = true;
 		}
-		return output.html;
+		return output;
 	}
-	
+
 	// Rolls the flavor text of the item, or custom text if any was entered.
 	rollFlavor(preArgs) {
 		let args = mergeObject({text: this.item.data.data.chatFlavor}, preArgs || {});
-		
-		return `<div class="flavor-text br-flavor">${args.text}</div>`;
+
+		return {
+			type: "flavor",
+			html: `<div class="flavor-text br-flavor">${args.text}</div>`
+		};
 	}
-	
+
 	async configureSpell() {
 		let item = this.item;
 		let actor = item.actor;
@@ -1334,7 +1377,7 @@ export class CustomItemRoll {
 		let consume = false;
 		let placeTemplate = false;
 		let isPact = false;
-		
+
 		// Only run the dialog if the spell is not a cantrip
 		if (item.data.data.level > 0) {
 			try {
@@ -1346,17 +1389,16 @@ export class CustomItemRoll {
 			}
 			catch(error) { return "error"; }
 		}
-		
+
 		if (lvl == "pact") {
 			isPact = true;
 			lvl = getProperty(actor, `data.data.spells.pact.level`) || lvl;
-			console.log(lvl);
 		}
-		
+
 		if ( lvl !== item.data.data.level ) {
 			item = item.constructor.createOwned(mergeObject(duplicate(item.data), {"data.level": lvl}, {inplace: false}), actor);
 		}
-		
+
 		// Update Actor data
 		if ( consume && (lvl !== 0) ) {
 			let spellSlot = isPact ? "pact" : "spell"+lvl;
@@ -1364,14 +1406,14 @@ export class CustomItemRoll {
 				[`data.resources.primary.value`]: Math.max(parseInt(actor.data.data.resources.primary.value) - lvl, 0)
 			});
 		}
-		
+
 		if (placeTemplate) {
 			this.placeTemplate();
 		}
-		
+
 		return lvl;
 	}
-	
+
 	// Places a template if the item has an area of effect
 	placeTemplate() {
 		let item = this.item;
@@ -1384,23 +1426,33 @@ export class CustomItemRoll {
 			}
 		}
 	}
-	
+
 	// Consumes one charge on an item. Will do nothing if item.data.data.uses.per is blank. Will warn the user if there are no charges left.
 	async consumeCharge(chargesToConsume = 1) {
 		let item = this.item;
 		let itemData = duplicate(item).data;
 		let output = {value: "success", destroy: false};
 		let recharged = getProperty(this.item, "data.data.recharge.charged");
-		
+		let hasNoCharges = ((itemData.uses.value == null || itemData.uses.value == 0) && (itemData.uses.max == null || itemData.uses.max == 0)) ? true : false;
+
 		function noChargesLeft() {
 			output.value = "noCharges";
 		}
-		
+
 		function checkQuantity() {
 			let autoUse = itemData.uses.autoUse;
 			let autoDestroy = itemData.uses.autoDestroy;
-			if (autoUse && itemData.uses.value <= 0) { // If the item should reduce in quantity when out of charges
-				console.log("autoUse!");
+			if (hasNoCharges) {
+				//console.log("No uses, only quantity!");
+				if (itemData.quantity < chargesToConsume) { noChargesLeft(); }
+				else if (autoUse) {
+					itemData.quantity -= 1;
+					if (itemData.quantity <= 0 && autoDestroy) {
+						output.destroy = true;
+					}
+				}
+			} else if (autoUse && itemData.uses.value <= 0) { // If the item should reduce in quantity when out of charges
+				//console.log("autoUse!");
 				if (itemData.quantity <= 1 && autoDestroy) {
 					output.destroy = true;
 				} else if (itemData.quantity <= 1 && itemData.uses.value < 0 && !autoDestroy) {
@@ -1417,34 +1469,35 @@ export class CustomItemRoll {
 					noChargesLeft();
 				}
 			} else if (itemData.uses.value < 0) {
-				noChargesLeft();
+				noChargesLeft;
 			}
 		}
-		
+
 		if (itemData.uses && itemData.uses.per) {
 			let itemCharges = itemData.uses.value;
 			let itemChargesMax = itemData.uses.max;
-			
+
 			if (itemCharges != null && itemChargesMax != null && itemCharges >= chargesToConsume) {
 				itemData.uses.value -= chargesToConsume;
 				checkQuantity();
 			} else if (item.type !== "consumable") {
 				noChargesLeft();
 			} else {
-				itemData.uses.value -= chargesToConsume;	
+				itemData.uses.value -= chargesToConsume;
 				checkQuantity();
 			}
 		} else if (item.type !== "consumable") {
 			if (recharged) { item.update({[`data.recharge.charged`]: false}) }
 			else { output.value = "noCharges"; }
+		} else if (hasNoCharges) {
+			checkQuantity();
 		}
-		
-		
-		
+
 		item.update({
-			[`data.uses.value`]: item.data.data.uses.value ? Math.max(itemData.uses.value, 0) : null,
+			[`data.uses.value`]: (typeof item.data.data.uses.value === "number") ? Math.max(itemData.uses.value, 0) : null,
 			[`data.quantity`]: itemData.quantity,
 		});
+
 		return output;
 	}
 }

@@ -9,15 +9,21 @@ If you are feeling generous, and would like to support my work, you can do so th
 
 ## Installation
 ### Method 1
-- Download the [.zip file](https://github.com/RedReign/FoundryVTT-BetterRolls5e/raw/master/betterrolls5e.zip) in this repository.
-- Extract the contents of the zip in `\resources\app\public\modules\`
-- Restart Foundry.
+- Start up Foundry and click "Install Module" in the "Add-On Modules" tab.
+- Search for "Better Rolls" in the pop up window.
+- Click "Install" and it should appear in your modules list.
 - Enjoy!
 
-### Method 2 (Now Works™!)
+### Method 2
 - Start up Foundry and click "Install Module" in the "Add-On Modules" tab.
 - Paste the link: `https://raw.githubusercontent.com/RedReign/FoundryVTT-BetterRolls5e/master/betterrolls5e/module.json`
 - Click "Install" and it should appear in your modules list.
+- Enjoy!
+
+### Method 3
+- Download the [.zip file](https://github.com/RedReign/FoundryVTT-BetterRolls5e/raw/master/betterrolls5e.zip) in this repository.
+- Extract the contents of the zip in `\resources\app\public\modules\`
+- Restart Foundry.
 - Enjoy!
 
 ## Implemented Features
@@ -61,11 +67,12 @@ Clicking with/without the Alt key:
 ![](https://i.imgur.com/L9NTE7G.png)
 
 ## Planned Features
-- Dual roll improvements
 - Additional macro support
 
 ## Known Issues
-- Right-click context menu to apply damage is not supported. Better Rolls removes this functionality. Consider using the Chat Damage Buttons instead.
+- Consumable logic is currently not working. Sit tight as the dnd5e system improves!
+- Blind rolls do not work with Better Rolls. This is due to the way that blind roll message logic is implemented in Foundry.
+- Chat Damage Buttons may not work for your players if you use Combat Utility Belt and have its "Hide NPC Names" feature enabled. This is because that feature overwrites click events in the messages. Make sure to disable the CUB feature if you wish to continue using Better Rolls's chat damage buttons.
 
 ## Acknowledgements
 - Big thanks to Atropos for making a wonderful VTT that's worth making modules for!
@@ -74,6 +81,7 @@ Clicking with/without the Alt key:
 - Thank you, Brother Sharp#6921 for providing the Japanese localization for this module.
 - Thank you, KLO#1490 for providing the Korean localization for this module.
 - Thank you, Cosmo Corban#4840 for providing the Spanish localization for this module.
+- Thank you, Olirin#0350 for providing the French localization for this module.
 - Additional thanks go to KaKaRoTo, tposney, and Giddy of the Foundry discord for advice and assistance while developing and maintaining this module.
 - My gratitude extends also to all the folks of the Foundry VTT community for their endless wisdom and insight.
 
