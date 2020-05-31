@@ -360,18 +360,18 @@ export class CustomItemRoll {
 		this.config = {
 			playRollSounds: game.settings.get("betterrollssw5e", "playRollSounds"),
 			hasMaestroSound: hasMaestroSound(this.item),
-			damageRollPlacement: game.settings.get("betterrolls5e", "damageRollPlacement"),
-			rollTitlePlacement: game.settings.get("betterrolls5e", "rollTitlePlacement"),
-			damageTitlePlacement: game.settings.get("betterrolls5e", "damageTitlePlacement"),
-			damageContextPlacement: game.settings.get("betterrolls5e", "damageContextPlacement"),
-			contextReplacesTitle: game.settings.get("betterrolls5e", "contextReplacesTitle"),
-			contextreplacesDamage: game.settings.get("betterrolls5e", "contextReplacesDamage"),
-			critString: game.settings.get("betterrolls5e", "critString"),
-			critBehavior: game.settings.get("betterrolls5e", "critBehavior"),
-			quickDefaultDescriptionEnabled: game.settings.get("betterrolls5e", "quickDefaultDescriptionEnabled"),
-			altSecondaryEnabled: game.settings.get("betterrolls5e", "altSecondaryEnabled"),
-			d20Mode: game.settings.get("betterrolls5e", "d20Mode"),
-			hideDC: game.settings.get("betterrolls5e", "hideDC"),
+			damageRollPlacement: game.settings.get("betterrollssw5e", "damageRollPlacement"),
+			rollTitlePlacement: game.settings.get("betterrollssw5e", "rollTitlePlacement"),
+			damageTitlePlacement: game.settings.get("betterrollssw5e", "damageTitlePlacement"),
+			damageContextPlacement: game.settings.get("betterrollssw5e", "damageContextPlacement"),
+			contextReplacesTitle: game.settings.get("betterrollssw5e", "contextReplacesTitle"),
+			contextreplacesDamage: game.settings.get("betterrollssw5e", "contextReplacesDamage"),
+			critString: game.settings.get("betterrollssw5e", "critString"),
+			critBehavior: game.settings.get("betterrollssw5e", "critBehavior"),
+			quickDefaultDescriptionEnabled: game.settings.get("betterrollssw5e", "quickDefaultDescriptionEnabled"),
+			altSecondaryEnabled: game.settings.get("betterrollssw5e", "altSecondaryEnabled"),
+			d20Mode: game.settings.get("betterrollssw5e", "d20Mode"),
+			hideDC: game.settings.get("betterrollssw5e", "hideDC"),
 		};
 	}
 
@@ -459,7 +459,7 @@ export class CustomItemRoll {
 
 		await new Promise(r => setTimeout(r, 25));
 
-		let content = await renderTemplate("modules/betterrolls5e/templates/red-fullroll.html", {
+		let content = await renderTemplate("modules/betterrollssw5e/templates/red-fullroll.html", {
 			item: item,
 			actor: actor,
 			tokenId: tokenId,
@@ -773,10 +773,10 @@ export class CustomItemRoll {
 			case "consumable":
 				properties = [
 					data.weight ? data.weight + " " + i18n("lbs.") : null,
-					((data.activation.type !== "") && (data.activation.type !== "none")) ? (data.activation.cost ? data.activation.cost + " " : "") + dnd5e.abilityActivationTypes[data.activation.type] : null,
-					(data.duration.units) ? (data.duration.value ? data.duration.value + " " : "") + dnd5e.timePeriods[data.duration.units] : null,
+					((data.activation.type !== "") && (data.activation.type !== "none")) ? (data.activation.cost ? data.activation.cost + " " : "") + sw5e.abilityActivationTypes[data.activation.type] : null,
+					(data.duration.units) ? (data.duration.value ? data.duration.value + " " : "") + sw5e.timePeriods[data.duration.units] : null,
 					range,
-					data.target.type ? i18n("Target: ").concat(dnd5e.targetTypes[data.target.type]) + ((data.target.units ) && (data.target.units !== "none") ? " (" + data.target.value + " " + dnd5e.distanceUnits[data.target.units] + ")" : "") : null,
+					data.target.type ? i18n("Target: ").concat(sw5e.targetTypes[data.target.type]) + ((data.target.units ) && (data.target.units !== "none") ? " (" + data.target.value + " " + sw5e.distanceUnits[data.target.units] + ")" : "") : null,
 				];
 				break;
 			case "equipment":
@@ -1298,7 +1298,7 @@ export class CustomItemRoll {
 		let hideDC = this.config.hideDC;
 		let displayedDC = (hideDC == "2") || (hideDC == "1" && actor.data.type == "npc") ? i18n("br5e.hideDC.string") : saveData.dc
 
-		let saveLabel = `${i18n("br5e.buttons.saveDC")} ${displayedDC} ${dnd5e.abilities[saveData.ability]}`;
+		let saveLabel = `${i18n("br5e.buttons.saveDC")} ${displayedDC} ${sw5e.abilities[saveData.ability]}`;
 		let button = {
 			type: "saveDC",
 			html: await renderTemplate("modules/betterrollssw5e/templates/red-save-button.html", {data: saveData, saveLabel: saveLabel})

@@ -1,6 +1,6 @@
-import { DND5E } from "../../../systems/dnd5e/module/config.js";
-import SpellCastDialog from "../../../systems/dnd5e/module/apps/spell-cast-dialog.js";
-import AbilityTemplate from "../../../systems/dnd5e/module/pixi/ability-template.js";
+import { SW5E } from "../../../systems/sw5e/module/config.js";
+import SpellCastDialog from "../../../systems/sw5e/module/apps/spell-cast-dialog.js";
+import AbilityTemplate from "../../../systems/sw5e/module/pixi/ability-template.js";
 
 import { Utils } from "./utils.js";
 import { BetterRollsHooks } from "./hooks.js";
@@ -107,13 +107,13 @@ export function isCheck(item) {
 	return output;
 }
 
-let dnd5e = DND5E;
+let sw5e = SW5E;
 
 function getQuickDescriptionDefault() {
-	return game.settings.get("betterrolls5e", "quickDefaultDescriptionEnabled");
+	return game.settings.get("betterrollssw5e", "quickDefaultDescriptionEnabled");
 }
 
-CONFIG.betterRolls5e = {
+CONFIG.betterRollsSW5e = {
 	validItemTypes: ["weapon", "spell", "equipment", "feat", "tool", "consumable"],
 	allFlags: {
 		weaponFlags: {
@@ -189,19 +189,19 @@ CONFIG.betterRolls5e = {
 
 Hooks.on(`ready`, () => {
 	// Make a combined damage type array that includes healing
-	CONFIG.betterRolls5e.combinedDamageTypes = mergeObject(duplicate(dnd5e.damageTypes), dnd5e.healingTypes);
+	CONFIG.betterRollsSW5e.combinedDamageTypes = mergeObject(duplicate(sw5e.damageTypes), sw5e.healingTypes);
 
 	// Updates crit text from the dropdown.
-	let critText = game.settings.get("betterrolls5e", "critString")
+	let critText = game.settings.get("betterrollssw5e", "critString")
 	if (critText.includes("br5e.critString")) {
 		critText = i18n(critText);
-		game.settings.set("betterrolls5e", "critString", critText);
+		game.settings.set("betterrollssw5e", "critString", critText);
 	}
 });
 
 // Create flags for item when it's first created
 Hooks.on(`createOwnedItem`, (outerData, id, innerData) => {
-	game.settings.get("betterrolls5e", "diceEnabled") ? redUpdateFlags(outerData) : null;
+	game.settings.get("betterrollssw5e", "diceEnabled") ? redUpdateFlags(outerData) : null;
 });
 
 Hooks.on(`renderChatMessage`, (message, html, data) => {
@@ -238,10 +238,10 @@ async function addButtonsToItemLi(li, actor, buttonContainer) {
 
     let item = actor.getOwnedItem(String(li.attr("data-item-id")));
     let itemData = item.data.data;
-    let flags = item.data.flags.betterRolls5e;
+    let flags = item.data.flags.betterRollsSW5e;
 
     // Check settings
-    let diceEnabled = game.settings.get("betterrolls5e", "diceEnabled");
+    let diceEnabled = game.settings.get("betterrollssw5e", "diceEnabled");
 
     if (!li.hasClass("expanded")) return;  // this is a way to not continue if the items description is not shown, but its only a minor gain to do this while it may break this module in sheets that dont use "expanded"
 
@@ -249,7 +249,7 @@ async function addButtonsToItemLi(li, actor, buttonContainer) {
     // Create the buttons
     let buttons = $(`<div class="item-buttons"></div>`);
     let buttonsWereAdded = false;
-	let contextEnabled = (game.settings.get("betterrolls5e", "damageContextPlacement") !== "0") ? true : false;
+	let contextEnabled = (game.settings.get("betterrollssw5e", "damageContextPlacement") !== "0") ? true : false;
     switch (item.data.type) {
         case 'weapon':
         case 'feat':
@@ -261,7 +261,7 @@ async function addButtonsToItemLi(li, actor, buttonContainer) {
             if (isAttack(item)) buttons.append(`<span class="tag"><button data-action="attackRoll">${i18n("br5e.buttons.attack")}</button></span>`);
             if (isSave(item)) {
                 let saveData = getSave(item);
-                buttons.append(`<span class="tag"><button data-action="save">${i18n("br5e.buttons.saveDC")} ${saveData.dc} ${dnd5e.abilities[saveData.ability]}</button></span>`);
+                buttons.append(`<span class="tag"><button data-action="save">${i18n("br5e.buttons.saveDC")} ${saveData.dc} ${sw5e.abilities[saveData.ability]}</button></span>`);
             }
             if (itemData.damage.parts.length > 0) {
                 buttons.append(`<span class="tag"><button data-action="damageRoll" data-value="all">${i18n("br5e.buttons.damage")}</button></span>`);
@@ -272,10 +272,10 @@ async function addButtonsToItemLi(li, actor, buttonContainer) {
 				if (itemData.damage.parts.length > 1) {
 					buttons.append(`<br>`);
 					for (let i = 0; i < itemData.damage.parts.length; i++) {
-						let damageString = (contextEnabled && flags.quickDamage.context[i]) || CONFIG.betterRolls5e.combinedDamageTypes[itemData.damage.parts[i][1]];
+						let damageString = (contextEnabled && flags.quickDamage.context[i]) || CONFIG.betterRollsSW5e.combinedDamageTypes[itemData.damage.parts[i][1]];
 						buttons.append(`<span class="tag"><button data-action="damageRoll" data-value=${i}>${i}: ${damageString}</button></span>`);
 						if (i === 0 && itemData.damage.versatile) {
-							buttons.append(`<span class="tag"><button data-action="verDamageRoll" data-value=0>${0}: ${damageString} (${dnd5e.weaponProperties.ver})</button></span>`);
+							buttons.append(`<span class="tag"><button data-action="verDamageRoll" data-value=0>${0}: ${damageString} (${sw5e.weaponProperties.ver})</button></span>`);
 						}
 					}
 				}
@@ -326,7 +326,7 @@ async function addButtonsToItemLi(li, actor, buttonContainer) {
 			// The arguments compounded into an object and an array of fields, to be served to the roll() function as the params and fields arguments
 			let params = {forceCrit:ev.altKey, event:ev};
 			let fields = [];
-			if (params.forceCrit) { fields.push(["flavor", {text:`${game.settings.get("betterrolls5e", "critString")}`}]); }
+			if (params.forceCrit) { fields.push(["flavor", {text:`${game.settings.get("betterrollssw5e", "critString")}`}]); }
 
             // Sets the damage roll in the argument to the value of the button
             function setDamage(versatile = false) {
@@ -383,39 +383,39 @@ async function addButtonsToItemLi(li, actor, buttonContainer) {
 }
 
 export async function redUpdateFlags(item) {
-	if (!item.data || CONFIG.betterRolls5e.validItemTypes.indexOf(item.data.type) == -1) { return; }
-	if (item.data.flags.betterRolls5e === undefined) {
-		item.data.flags.betterRolls5e = {};
+	if (!item.data || CONFIG.betterRollsSW5e.validItemTypes.indexOf(item.data.type) == -1) { return; }
+	if (item.data.flags.betterRollsSW5e === undefined) {
+		item.data.flags.betterRollsSW5e = {};
 	}
 
-	let flags = duplicate(CONFIG.betterRolls5e.allFlags[item.data.type.concat("Flags")]);
-	item.data.flags.betterRolls5e = mergeObject(flags, item.data.flags.betterRolls5e);
+	let flags = duplicate(CONFIG.betterRollsSW5e.allFlags[item.data.type.concat("Flags")]);
+	item.data.flags.betterRollsSW5e = mergeObject(flags, item.data.flags.betterRollsSW5e);
 
 	// If quickDamage flags should exist, update them based on which damage formulae are available
-	if (CONFIG.betterRolls5e.allFlags[item.data.type.concat("Flags")].quickDamage) {
+	if (CONFIG.betterRollsSW5e.allFlags[item.data.type.concat("Flags")].quickDamage) {
 		let newQuickDamageValues = [];
 		let newQuickDamageAltValues = [];
 
 		// Make quickDamage flags if they don't exist
-		if (!item.data.flags.betterRolls5e.quickDamage) {
-			item.data.flags.betterRolls5e.quickDamage = {type: "Array", value: [], altValue: []};
+		if (!item.data.flags.betterRollsSW5e.quickDamage) {
+			item.data.flags.betterRollsSW5e.quickDamage = {type: "Array", value: [], altValue: []};
 		}
 
 		for (let i = 0; i < item.data.data.damage.parts.length; i++) {
 			newQuickDamageValues[i] = true;
 			newQuickDamageAltValues[i] = true;
-			if (item.data.flags.betterRolls5e.quickDamage.value[i] != null) {
-				newQuickDamageValues[i] = item.data.flags.betterRolls5e.quickDamage.value[i];
+			if (item.data.flags.betterRollsSW5e.quickDamage.value[i] != null) {
+				newQuickDamageValues[i] = item.data.flags.betterRollsSW5e.quickDamage.value[i];
 			}
-			if (item.data.flags.betterRolls5e.quickDamage.altValue[i] != null) {
-				newQuickDamageAltValues[i] = item.data.flags.betterRolls5e.quickDamage.altValue[i];
+			if (item.data.flags.betterRollsSW5e.quickDamage.altValue[i] != null) {
+				newQuickDamageAltValues[i] = item.data.flags.betterRollsSW5e.quickDamage.altValue[i];
 			}
 		}
-		item.data.flags.betterRolls5e.quickDamage.value = newQuickDamageValues;
-		item.data.flags.betterRolls5e.quickDamage.altValue = newQuickDamageAltValues;
+		item.data.flags.betterRollsSW5e.quickDamage.value = newQuickDamageValues;
+		item.data.flags.betterRollsSW5e.quickDamage.altValue = newQuickDamageAltValues;
 	}
 
-	return item.data.flags.betterRolls5e;
+	return item.data.flags.betterRollsSW5e;
 }
 
 /**
@@ -424,7 +424,7 @@ export async function redUpdateFlags(item) {
 export async function addBetterRollsContent(item, protoHtml, data) {
 	if (item.actor && item.actor.permission < 3) { return; }
 
-	if (CONFIG.betterRolls5e.validItemTypes.indexOf(item.data.type) == -1) { return; }
+	if (CONFIG.betterRollsSW5e.validItemTypes.indexOf(item.data.type) == -1) { return; }
 	redUpdateFlags(item);
 
 	let html = protoHtml;
@@ -435,47 +435,47 @@ export async function addBetterRollsContent(item, protoHtml, data) {
 
 	let tabSelector = html.find(`form nav.sheet-navigation.tabs`),
 		settingsContainer = html.find(`.sheet-body`),
-		betterRollsTabString = `<a class="item" data-group="primary" data-tab="betterRolls5e">${i18n("Better Rolls")}</a>`,
+		betterRollsTabString = `<a class="item" data-group="primary" data-tab="betterRollsSW5e">${i18n("Better Rolls")}</a>`,
 		tab = tabSelector.append($(betterRollsTabString));
 
-	let betterRollsTemplateString = `modules/betterrolls5e/templates/red-item-options.html`,
-		altSecondaryEnabled = game.settings.get("betterrolls5e", "altSecondaryEnabled");
+	let betterRollsTemplateString = `modules/betterrollssw5e/templates/red-item-options.html`,
+		altSecondaryEnabled = game.settings.get("betterrollssw5e", "altSecondaryEnabled");
 	let betterRollsTemplate = await renderTemplate(betterRollsTemplateString, {
-		DND5E: CONFIG.DND5E,
+		SW5E: CONFIG.SW5E,
 		item: item,
 		isConsumable: item.data.type == "consumable" ? true : false,
 		isAttack: isAttack(item),
 		isSave: isSave(item),
 		flags: item.data.flags,
-		damageTypes: CONFIG.betterRolls5e.combinedDamageTypes,
+		damageTypes: CONFIG.betterRollsSW5e.combinedDamageTypes,
 		altSecondaryEnabled: altSecondaryEnabled,
 		itemHasTemplate: item.hasAreaTarget
 	});
 	let extraTab = settingsContainer.append(betterRollsTemplate);
 
 	// Add damage context input
-	if (game.settings.get("betterrolls5e", "damageContextPlacement") !== "0") {
+	if (game.settings.get("betterrollssw5e", "damageContextPlacement") !== "0") {
 		let damageRolls = html.find(`.tab.details .damage-parts .damage-part input`);
 		// Placeholder is either "Context" or "Label" depending on system settings
-		let placeholder = game.settings.get("betterrolls5e", "contextReplacesDamage") ? "br5e.settings.label" : "br5e.settings.context";
+		let placeholder = game.settings.get("betterrollssw5e", "contextReplacesDamage") ? "br5e.settings.label" : "br5e.settings.context";
 
 		for (let i = 0; i < damageRolls.length; i++) {
-			let contextField = $(`<input type="text" name="flags.betterRolls5e.quickDamage.context.${i}" value="${(item.data.flags.betterRolls5e.quickDamage.context[i] || "")}" placeholder="${i18n(placeholder)}" data-dtype="String" style="margin-left:5px;">`);
+			let contextField = $(`<input type="text" name="flags.betterRollsSW5e.quickDamage.context.${i}" value="${(item.data.flags.betterRollsSW5e.quickDamage.context[i] || "")}" placeholder="${i18n(placeholder)}" data-dtype="String" style="margin-left:5px;">`);
 			damageRolls[i].after(contextField[0]);
 			// Add event listener to delete context when damage is deleted
 			$($($(damageRolls[i])[0].parentElement).find(`a.delete-damage`)).click(async event => {
-				let contextFlags = Object.values(item.data.flags.betterRolls5e.quickDamage.context);
+				let contextFlags = Object.values(item.data.flags.betterRollsSW5e.quickDamage.context);
 				contextFlags.splice(i, 1);
 				item.update({
-					[`flags.betterRolls5e.quickDamage.context`]: contextFlags,
+					[`flags.betterRollsSW5e.quickDamage.context`]: contextFlags,
 				});
 			});
 		}
 
 		// Add context field for Other Formula field
-		if (getProperty(item, "data.flags.betterRolls5e.quickOther")) {
+		if (getProperty(item, "data.flags.betterRollsSW5e.quickOther")) {
 			let otherRoll = html.find(`.tab.details .form-fields input[name="data.formula"]`);
-			let otherContextField = $(`<input type="text" name="flags.betterRolls5e.quickOther.context" value="${(item.data.flags.betterRolls5e.quickOther.context || "")}" placeholder="${i18n(placeholder)}" data-dtype="String" style="margin-left:5px;">`);
+			let otherContextField = $(`<input type="text" name="flags.betterRollsSW5e.quickOther.context" value="${(item.data.flags.betterRollsSW5e.quickOther.context || "")}" placeholder="${i18n(placeholder)}" data-dtype="String" style="margin-left:5px;">`);
 			if (otherRoll[0]) { otherRoll[0].after(otherContextField[0]); }
 		}
 	}
@@ -565,8 +565,8 @@ export function changeRollsToDual (actor, html, data, params) {
 				CustomRoll.fullRollAttribute(actor, ability, "save");
 			} else {
 				new Dialog({
-					title: `${i18n(dnd5e.abilities[ability])} ${i18n("Ability Roll")}`,
-					content: `<p><span style="font-weight: bold;">${i18n(dnd5e.abilities[ability])}:</span> ${i18n("What type of roll?")}</p>`,
+					title: `${i18n(sw5e.abilities[ability])} ${i18n("Ability Roll")}`,
+					content: `<p><span style="font-weight: bold;">${i18n(sw5e.abilities[ability])}:</span> ${i18n("What type of roll?")}</p>`,
 					buttons: {
 						test: {
 							label: i18n("Ability Check"),
@@ -633,10 +633,10 @@ export function changeRollsToDual (actor, html, data, params) {
 				item = actor.getOwnedItem(String(li.attr("data-item-id"))),
 				params = CustomRoll.eventToAdvantage(event);
 				console.log(item);
-			if (!game.settings.get("betterrolls5e", "imageButtonEnabled")) {
+			if (!game.settings.get("betterrollssw5e", "imageButtonEnabled")) {
 				item.actor.sheet._onItemRoll(event);
 			} else if (event.altKey) {
-				if (game.settings.get("betterrolls5e", "altSecondaryEnabled")) {
+				if (game.settings.get("betterrollssw5e", "altSecondaryEnabled")) {
 					event.preventDefault();
 					CustomRoll.newItemRoll(item, mergeObject(params, {preset:1})).toMessage();
 				} else {
@@ -666,7 +666,7 @@ export function BetterRolls() {
 				type: "script",
 				img: item.data.img,
 				command: command(),
-				flags: {"dnd5e.itemMacro": true}
+				flags: {"sw5e.itemMacro": true}
 			}, {displaySheet: false});
 		}
 		game.user.assignHotbarMacro(macro, slot);
@@ -702,7 +702,7 @@ export function BetterRolls() {
 	};
 
 	function isAlt(event) {
-		if (event && event.altKey && game.settings.get("betterrolls5e", "altSecondaryEnabled")) { return true; }
+		if (event && event.altKey && game.settings.get("betterrollssw5e", "altSecondaryEnabled")) { return true; }
 		else { return false; }
 	};
 

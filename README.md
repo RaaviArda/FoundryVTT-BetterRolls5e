@@ -16,12 +16,12 @@ If you are feeling generous, and would like to support my work, you can do so th
 
 ### Method 2
 - Start up Foundry and click "Install Module" in the "Add-On Modules" tab.
-- Paste the link: `https://raw.githubusercontent.com/RedReign/FoundryVTT-BetterRolls5e/master/betterrolls5e/module.json`
+- Paste the link: `https://raw.githubusercontent.com/RedReign/FoundryVTT-BetterRolls5e/master/betterrollssw5e/module.json`
 - Click "Install" and it should appear in your modules list.
 - Enjoy!
 
 ### Method 3
-- Download the [.zip file](https://github.com/RedReign/FoundryVTT-BetterRolls5e/raw/master/betterrolls5e.zip) in this repository.
+- Download the [.zip file](https://github.com/RedReign/FoundryVTT-BetterRolls5e/raw/master/betterrollssw5e.zip) in this repository.
 - Extract the contents of the zip in `\resources\app\public\modules\`
 - Restart Foundry.
 - Enjoy!
@@ -49,7 +49,7 @@ Clicking with/without the Alt key:
 - Need for clicking through prompts in order to get a single roll is removed, allowing for ease of use.
 - Per-item options for showing the item's description on a quick roll.
 - Per-item critical threshold.
-- Supports dnd5e's additional damage rolls, which are fully configurable for appearing on Quick Rolls!
+- Supports sw5e's additional damage rolls, which are fully configurable for appearing on Quick Rolls!
 
 ![](https://i.imgur.com/FkotJOG.png)
 - Natively supports the Better NPC Sheet
@@ -70,7 +70,7 @@ Clicking with/without the Alt key:
 - Additional macro support
 
 ## Known Issues
-- Consumable logic is currently not working. Sit tight as the dnd5e system improves!
+- Consumable logic is currently not working. Sit tight as the sw5e system improves!
 - Blind rolls do not work with Better Rolls. This is due to the way that blind roll message logic is implemented in Foundry.
 - Chat Damage Buttons may not work for your players if you use Combat Utility Belt and have its "Hide NPC Names" feature enabled. This is because that feature overwrites click events in the messages. Make sure to disable the CUB feature if you wish to continue using Better Rolls's chat damage buttons.
 

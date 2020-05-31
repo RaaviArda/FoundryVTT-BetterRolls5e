@@ -196,7 +196,7 @@ Hooks.once("init", () => {
 		type: Boolean
 	});
 
-	game.settings.register("betterrolls5e", "hideDC", {
+	game.settings.register("betterrollssw5e", "hideDC", {
 		name: i18n("br5e.hideDC.name"),
 		hint: i18n("br5e.hideDC.hint"),
 		scope: "world",
@@ -214,10 +214,10 @@ Hooks.once("init", () => {
 // Modify context menu for damage rolls (they break)
 Hooks.on("getChatLogEntryContext", (html, options) => {
 	let contextDamageLabels = [
-		game.i18n.localize("DND5E.ChatContextDamage"),
-		game.i18n.localize("DND5E.ChatContextHealing"),
-		game.i18n.localize("DND5E.ChatContextDoubleDamage"),
-		game.i18n.localize("DND5E.ChatContextHalfDamage")
+		game.i18n.localize("SW5E.ChatContextDamage"),
+		game.i18n.localize("SW5E.ChatContextHealing"),
+		game.i18n.localize("SW5E.ChatContextDoubleDamage"),
+		game.i18n.localize("SW5E.ChatContextHalfDamage")
 	];
 
 	for (let i=options.length-1; i>=0; i--) {
