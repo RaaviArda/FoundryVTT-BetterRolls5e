@@ -2,7 +2,7 @@
 	"name": "betterrollssw5e",
 	"title": "Better Rolls for SW 5e",
 	"description": "This module adds special roll functionality for the SW D20 5e system, allowing \"dual rolls\" for d20 rolls, buttons that support full output to chat, and customization for said outputs.",
-	"minimumCoreVersion": "0.5.5",
+	"minimumCoreVersion": "0.5.7",
 	"compatibleCoreVersion": "0.6.0",
 	"version": "1.0.8",
 	"author": "Red Reign#5128 + Raavi Arda",
@@ -11,29 +11,9 @@
 			"lang": "en",
 			"name": "English",
 			"path": "lang/en.json"
-		},
-		{
-			"lang": "fr",
-			"name": "Français (French)",
-			"path": "lang/fr.json"
-		},
-		{
-			"lang": "es",
-			"name": "Español (Spanish)",
-			"path": "lang/es.json"
-		},
-		{
-			"lang": "ja",
-			"name": "日本語 (Japanese)",
-			"path": "lang/ja.json"
-		},
-		{
-			"lang": "ko",
-			"name": "한국어 (Korean)",
-			"path": "lang/ko.json"
 		}
 	],
-	"systems": ["sw5e", "sw5eJP"],
+	"systems": ["sw5e"],
 	"esmodules": [
 		"./scripts/betterrollssw5e.js",
 		"./scripts/custom-roll.js",

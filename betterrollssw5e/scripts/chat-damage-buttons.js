@@ -1,13 +1,13 @@
 import { SW5E } from "../../../systems/sw5e/module/config.js";
-import { Actor5e } from "../../../systems/sw5e/module/actor/entity.js";
+import Actor5e from "../../../systems/sw5e/module/actor/entity.js";
 import { i18n, getTargetActors } from "./betterrollssw5e.js";
 
 Hooks.on('renderChatMessage', (message, html, data) => {
 	if (!game.settings.get("betterrollssw5e", "chatDamageButtonsEnabled")) { return; }
     let chatCard = html.find('.red-full');
     if (chatCard.length === 0) { return; }
-
-
+	
+	
 	function addButtons(dmgElement) {
         // creating the buttons and container
         let fullDamageButton = $(`<button data-modifier="1"><i class="fas fa-user-minus" title="${i18n("br5e.chat.damageButtons.fullDamage.hint")}"></i></button>`);
@@ -25,9 +25,9 @@ Hooks.on('renderChatMessage', (message, html, data) => {
         // adding the buttons to the the target element
         $(dmgElement).append(btnContainer);
     }
-    let dmgElements = html.find('.red-base-die').parents('.dice-total');
+    let dmgElements = html.find('.red-base-die').parents('.dice-total'); 
     for (let dmgElement of dmgElements) { addButtons(dmgElement); }
-
+	
 	let customElements = html.find('[data-type=custom] .red-base-die');
 	for (let customElement of customElements) { addButtons(customElement); }
 
@@ -56,12 +56,12 @@ Hooks.on('renderChatMessage', (message, html, data) => {
 				modifier = $(ev.target).parent().attr('data-modifier');
 			}
 
-			// applying dmg to the targeted token and sending only the span that the button sits in
+			// applying dmg to the targeted token and sending only the span that the button sits in 
 			let targetActors = getTargetActors();
 			for (let i=0; i<targetActors.length; i++) {
 				targetActors[i].applyDamage(dmg, modifier);
 			}
-			setTimeout(() => {
+			setTimeout(() => { 
 				if (canvas.hud.token._displayState && canvas.hud.token._displayState !== 0) {
 					canvas.hud.token.render();
 				}
@@ -85,7 +85,7 @@ async function applyCritDamage(dmg, critdmg, position) {
         options.left = position.x;
         options.top = position.y;
         options.width = 100;
-
+        
         let d = new Dialog({
             title: i18n("br5e.chat.damageButtons.critPrompt.title"),
             content: "",

@@ -40,18 +40,18 @@ export function getWhisperData() {
 	let rollMode = null,
 		whisper = null,
 		blind = null;
-
+	
 	rollMode = game.settings.get("core", "rollMode");
 	if ( ["gmroll", "blindroll"].includes(rollMode) ) whisper = ChatMessage.getWhisperRecipients("GM");
 	if ( rollMode === "blindroll" ) blind = true;
 	else if ( rollMode === "selfroll" ) whisper = [game.user._id];
-
+	
 	let output = {
 		rollMode: rollMode,
 		whisper: whisper,
 		blind: blind
 	}
-
+	
 	return output;
 }
 
@@ -90,7 +90,7 @@ export function getSave(item) {
 				let mod = null,
 					abl = null,
 					prof = item.actor.data.data.attributes.prof;
-
+				
 				abl = itemData.ability;
 				if (abl) { mod = item.actor.data.data.abilities[abl].mod; }
 				else { mod = 0; }
@@ -190,7 +190,7 @@ CONFIG.betterRollsSW5e = {
 Hooks.on(`ready`, () => {
 	// Make a combined damage type array that includes healing
 	CONFIG.betterRollsSW5e.combinedDamageTypes = mergeObject(duplicate(sw5e.damageTypes), sw5e.healingTypes);
-
+	
 	// Updates crit text from the dropdown.
 	let critText = game.settings.get("betterrollssw5e", "critString")
 	if (critText.includes("br5e.critString")) {
@@ -216,11 +216,11 @@ Hooks.on(`renderChatMessage`, (message, html, data) => {
 export async function addItemSheetButtons(actor, html, data, triggeringElement = '', buttonContainer = '') {
 	// Do not modify the sheet if the user does not have permission to use the sheet
 	if (actor.permission < 3) { return; }
-
+	
     // Setting default element selectors
     if (triggeringElement === '') triggeringElement = '.item .item-name h4';
     if (buttonContainer === '') buttonContainer = '.item-properties';
-
+	
     // adding an event for when the description is shown
     html.find(triggeringElement).click(event => {
 		//console.log(event);
@@ -235,7 +235,7 @@ export async function addItemSheetButtons(actor, html, data, triggeringElement =
 }
 
 async function addButtonsToItemLi(li, actor, buttonContainer) {
-
+	
     let item = actor.getOwnedItem(String(li.attr("data-item-id")));
     let itemData = item.data.data;
     let flags = item.data.flags.betterRollsSW5e;
@@ -296,30 +296,30 @@ async function addButtonsToItemLi(li, actor, buttonContainer) {
 			}
             break;
     }
-
+	
     if (buttonsWereAdded) { buttons.append(`<br>`); }
-
+	
     // Add info button
     if (diceEnabled) { buttons.append(`<span class="tag"><button data-action="infoRoll">${i18n("br5e.buttons.info")}</button></span>`); }
-
+	
     // Add default roll button
     buttons.append(`<span class="tag"><button data-action="vanillaRoll">${i18n("br5e.buttons.defaultSheetRoll")}</button></span>`);
-
+	
     //if (((item.data.data.damage !== undefined) && item.data.data.damage.value) || ((item.data.data.damage2 !== undefined) && item.data.data.damage2.value) || (chatData.isAttack) || (chatData.isSave) || (chatData.hasCharges)) {buttonsWereAdded = true;}
     if (buttonsWereAdded) { buttons.append(`<br><header style="margin-top:6px"></header>`); }
-
+	
     // adding the buttons to the sheet
-
+	
     let targetHTML = li; //$(event.target.parentNode.parentNode)
     targetHTML.find(buttonContainer).prepend(buttons);
-
+	
     //html.find(buttonContainer).prepend(buttons);
-
+	
     // adding click event for all buttons
     buttons.find('button').click((ev) => {
         ev.preventDefault();
         ev.stopPropagation();
-
+		
         // which function gets called depends on the type of button stored in the dataset attribute action
         // If better rolls are on
         if (diceEnabled) {
@@ -327,7 +327,7 @@ async function addButtonsToItemLi(li, actor, buttonContainer) {
 			let params = {forceCrit:ev.altKey, event:ev};
 			let fields = [];
 			if (params.forceCrit) { fields.push(["flavor", {text:`${game.settings.get("betterrollssw5e", "critString")}`}]); }
-
+			
             // Sets the damage roll in the argument to the value of the button
             function setDamage(versatile = false) {
                 let damage = [];
@@ -337,7 +337,7 @@ async function addButtonsToItemLi(li, actor, buttonContainer) {
 					fields.push(["damage", {index:Number(ev.target.dataset.value)}]);
                 }
             }
-
+			
             switch (ev.target.dataset.action) {
                 case 'quickRoll':
                     params.preset = 0; break;
@@ -387,20 +387,20 @@ export async function redUpdateFlags(item) {
 	if (item.data.flags.betterRollsSW5e === undefined) {
 		item.data.flags.betterRollsSW5e = {};
 	}
-
+	
 	let flags = duplicate(CONFIG.betterRollsSW5e.allFlags[item.data.type.concat("Flags")]);
 	item.data.flags.betterRollsSW5e = mergeObject(flags, item.data.flags.betterRollsSW5e);
-
+	
 	// If quickDamage flags should exist, update them based on which damage formulae are available
 	if (CONFIG.betterRollsSW5e.allFlags[item.data.type.concat("Flags")].quickDamage) {
 		let newQuickDamageValues = [];
 		let newQuickDamageAltValues = [];
-
+		
 		// Make quickDamage flags if they don't exist
 		if (!item.data.flags.betterRollsSW5e.quickDamage) {
 			item.data.flags.betterRollsSW5e.quickDamage = {type: "Array", value: [], altValue: []};
 		}
-
+		
 		for (let i = 0; i < item.data.data.damage.parts.length; i++) {
 			newQuickDamageValues[i] = true;
 			newQuickDamageAltValues[i] = true;
@@ -414,7 +414,7 @@ export async function redUpdateFlags(item) {
 		item.data.flags.betterRollsSW5e.quickDamage.value = newQuickDamageValues;
 		item.data.flags.betterRollsSW5e.quickDamage.altValue = newQuickDamageAltValues;
 	}
-
+	
 	return item.data.flags.betterRollsSW5e;
 }
 
@@ -423,21 +423,21 @@ export async function redUpdateFlags(item) {
  */
 export async function addBetterRollsContent(item, protoHtml, data) {
 	if (item.actor && item.actor.permission < 3) { return; }
-
+	
 	if (CONFIG.betterRollsSW5e.validItemTypes.indexOf(item.data.type) == -1) { return; }
 	redUpdateFlags(item);
-
+	
 	let html = protoHtml;
-
+	
 	if (html[0].localName !== "div") {
 		html = $(html[0].parentElement.parentElement);
 	}
-
+	
 	let tabSelector = html.find(`form nav.sheet-navigation.tabs`),
 		settingsContainer = html.find(`.sheet-body`),
 		betterRollsTabString = `<a class="item" data-group="primary" data-tab="betterRollsSW5e">${i18n("Better Rolls")}</a>`,
 		tab = tabSelector.append($(betterRollsTabString));
-
+	
 	let betterRollsTemplateString = `modules/betterrollssw5e/templates/red-item-options.html`,
 		altSecondaryEnabled = game.settings.get("betterrollssw5e", "altSecondaryEnabled");
 	let betterRollsTemplate = await renderTemplate(betterRollsTemplateString, {
@@ -452,13 +452,13 @@ export async function addBetterRollsContent(item, protoHtml, data) {
 		itemHasTemplate: item.hasAreaTarget
 	});
 	let extraTab = settingsContainer.append(betterRollsTemplate);
-
+	
 	// Add damage context input
 	if (game.settings.get("betterrollssw5e", "damageContextPlacement") !== "0") {
 		let damageRolls = html.find(`.tab.details .damage-parts .damage-part input`);
 		// Placeholder is either "Context" or "Label" depending on system settings
 		let placeholder = game.settings.get("betterrollssw5e", "contextReplacesDamage") ? "br5e.settings.label" : "br5e.settings.context";
-
+		
 		for (let i = 0; i < damageRolls.length; i++) {
 			let contextField = $(`<input type="text" name="flags.betterRollsSW5e.quickDamage.context.${i}" value="${(item.data.flags.betterRollsSW5e.quickDamage.context[i] || "")}" placeholder="${i18n(placeholder)}" data-dtype="String" style="margin-left:5px;">`);
 			damageRolls[i].after(contextField[0]);
@@ -471,7 +471,7 @@ export async function addBetterRollsContent(item, protoHtml, data) {
 				});
 			});
 		}
-
+		
 		// Add context field for Other Formula field
 		if (getProperty(item, "data.flags.betterRollsSW5e.quickOther")) {
 			let otherRoll = html.find(`.tab.details .form-fields input[name="data.formula"]`);
@@ -526,7 +526,7 @@ export function getTotalDamage(html) {
  */
 export function changeRollsToDual (actor, html, data, params) {
 	if (actor && actor.permission < 3) { return; }
-
+	
 	let paramRequests = mergeObject({
 			abilityButton: '.ability-name',
 			checkButton: '.ability-mod',
@@ -536,7 +536,7 @@ export function changeRollsToDual (actor, html, data, params) {
 			singleAbilityButton: true
 		},params || {});
 	//console.log(paramRequests);
-
+	
 	function getAbility(target) {
 		let ability = null;
 		for (let i=0; i <= 3; i++) {
@@ -548,7 +548,7 @@ export function changeRollsToDual (actor, html, data, params) {
 		}
 		return ability;
 	}
-
+	
 	// Assign new action to ability check button
 	let abilityName = html.find(paramRequests.abilityButton);
 	if (abilityName.length > 0 && paramRequests.singleAbilityButton === true) {
@@ -581,7 +581,7 @@ export function changeRollsToDual (actor, html, data, params) {
 			}
 		});
 	}
-
+	
 	// Assign new action to ability button
 	let checkName = html.find(paramRequests.checkButton);
 	if (checkName.length > 0) {
@@ -595,7 +595,7 @@ export function changeRollsToDual (actor, html, data, params) {
 			CustomRoll.fullRollAttribute(actor, ability, "check", params);
 		});
 	}
-
+	
 	// Assign new action to save button
 	let saveName = html.find(paramRequests.saveButton);
 	if (saveName.length > 0) {
@@ -609,7 +609,7 @@ export function changeRollsToDual (actor, html, data, params) {
 			CustomRoll.fullRollAttribute(actor, ability, "save", params);
 		});
 	}
-
+	
 	// Assign new action to skill button
 	let skillName = html.find(paramRequests.skillButton);
 	if (skillName.length > 0) {
@@ -621,7 +621,7 @@ export function changeRollsToDual (actor, html, data, params) {
 			CustomRoll.fullRollSkill(actor, skill, params);
 		});
 	}
-
+	
 	// Assign new action to item image button
 	let itemImage = html.find(paramRequests.itemButton);
 	if (itemImage.length > 0) {
@@ -671,7 +671,7 @@ export function BetterRolls() {
 		}
 		game.user.assignHotbarMacro(macro, slot);
 	};
-
+	
 	function quickRoll(itemName) {
 		let speaker = ChatMessage.getSpeaker();
 		let actor;
@@ -682,7 +682,7 @@ export function BetterRolls() {
 		else if (!item) { return ui.notifications.warn(`${actor.name} ${i18n("br5e.error.noKnownItemOnActor")} ${itemName}`); }
 		new CustomItemRoll(item, {event:event, preset:(isAlt(event) ? 1 : 0)}).toMessage();
 	};
-
+	
 	function quickRollById(actorId, itemId) {
 		let actor = game.actors.get(actorId);
 		if (!actor) { return ui.notifications.warn(`${i18n("br5e.error.noActorWithId")}`); }
@@ -691,7 +691,7 @@ export function BetterRolls() {
 		if (actor.permission != 3) { return ui.notifications.warn(`${i18n("br5e.error.noActorPermission")}`); }
 		new CustomItemRoll(item, {event:event, preset:(isAlt(event) ? 1 : 0)}).toMessage();
 	};
-
+	
 	function quickRollByName(actorName, itemName) {
 		let actor = game.actors.entities.find(i => i.name === actorName);
 		if (!actor) { return ui.notifications.warn(`${i18n("br5e.error.noKnownActorWithName")}`); }
@@ -700,18 +700,18 @@ export function BetterRolls() {
 		if (actor.permission != 3) { return ui.notifications.warn(`${i18n("br5e.error.noActorPermission")}`); }
 		new CustomItemRoll(item, {event:event, preset:(isAlt(event) ? 1 : 0)}).toMessage();
 	};
-
+	
 	function isAlt(event) {
 		if (event && event.altKey && game.settings.get("betterrollssw5e", "altSecondaryEnabled")) { return true; }
 		else { return false; }
 	};
-
+	
 	Hooks._hooks.hotbarDrop = [(bar, data, slot) => {
 		if ( data.type !== "Item" ) return true;
 		assignMacro(data, slot, "id");
 		return false;
     }].concat(Hooks._hooks.hotbarDrop || []);
-
+	
 	return {
 		assignMacro:assignMacro,
 		quickRoll:quickRoll,
