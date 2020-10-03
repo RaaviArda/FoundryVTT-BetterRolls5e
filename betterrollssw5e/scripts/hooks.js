@@ -23,6 +23,7 @@ export class BetterRollsHooks {
 		triggeringElement = ".item .item-name h4",
 		buttonContainer = ".item-properties",
 		params = {}) {
+		console.log("Adding actor sheet hook for Better Rolls: " + sheetName);
 		let sheetString = "render" + sheetName;
 		Hooks.on(sheetString, (app, html, data) => {
 			game.settings.get("betterrollssw5e", "rollButtonsEnabled") ? addItemSheetButtons(app.object, html, data, triggeringElement, buttonContainer) : null;
@@ -31,6 +32,7 @@ export class BetterRollsHooks {
 	}
 	
 	static addItemSheet(sheetName) {
+		console.log("Adding item sheet hook for Better Rolls: " + sheetName);
 		let sheetString = "render" + sheetName;
 		Hooks.on(sheetString, (app, html, data) => {
 			game.settings.get("betterrollssw5e", "diceEnabled") ? addBetterRollsContent(app.object, html, data) : null;
@@ -49,11 +51,13 @@ export class BetterRollsHooks {
 		triggeringElement = ".item .item-name h4", 
 		buttonContainer = ".item-properties",
 		itemButton = ".item .rollable") {
+		console.log("Adding item content hook for Better Rolls: " + actor);
 		game.settings.get("betterrollssw5e", "rollButtonsEnabled") ? addItemSheetButtons(actor, html, null, triggeringElement, buttonContainer) : null;
 		game.settings.get("betterrollssw5e", "diceEnabled") ? changeRollsToDual(actor, html, null, {itemButton: itemButton}) : null;
 	}
 }
 
+console.log("Better Rolls | Adding hooks for Better Rolls");
 BetterRollsHooks.addActorSheet("ActorSheet5eNPC");
 BetterRollsHooks.addActorSheet("ActorSheet5eCharacter");
 BetterRollsHooks.addActorSheet("BetterNPCActor5eSheet", ".item .npc-item-name", ".item-summary", {
@@ -73,3 +77,12 @@ BetterRollsHooks.addActorSheet("ActorSheet5eNPCDark");
 BetterRollsHooks.addActorSheet("Alt5eSheet");
 BetterRollsHooks.addItemSheet("ItemSheet5e");
 BetterRollsHooks.addItemSheet("ItemSheet5eDark");
+
+Hooks.on("renderChatMessage", (message, html, data) => {
+	if (!html.find(".red-full").length) { return; }
+
+	let actor = game.actors.get(message.data.speaker.actor);
+	if ((!actor && !game.user.isGM) || actor?.permission != 3) {
+		html.find(".hideSave").text(i18n("br5e.hideDC.string"));
+	}
+});

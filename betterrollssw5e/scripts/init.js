@@ -3,7 +3,7 @@ function i18n(key) {
 }
 
 Hooks.once("init", () => {
-	
+	console.log("Better Rolls | Init");
 	/**
 	* Register better rolls setting
 	*/
@@ -73,6 +73,19 @@ Hooks.once("init", () => {
 		config: true,
 		default: false,
 		type: Boolean
+	});
+
+	game.settings.register("betterrollssw5e", "defaultRollArt", {
+		name: i18n("br5e.defaultRollArt.name"),
+		hint: i18n("br5e.defaultRollArt.hint"),
+		scope: "world",
+		config: true,
+		default: "actor",
+		type: String,
+		choices: {
+			"actor": i18n("Actor"),
+			"token": i18n("Token")
+		}
 	});
 	
 	/**
@@ -209,6 +222,30 @@ Hooks.once("init", () => {
 			"2": i18n("br5e.hideDC.choices.2"),
 		}
 	});
+
+/*
+	BetterRollsHooks.addActorSheet("ActorSheet5eNPC");
+	BetterRollsHooks.addActorSheet("ActorSheet5eCharacter");
+	BetterRollsHooks.addActorSheet("BetterNPCActor5eSheet", ".item .npc-item-name", ".item-summary", {
+		itemButton: '.item .rollable', 
+		abilityButton: ".ability h4.ability-name.rollable", 
+		checkButton: ".ability div span.ability-mod", 
+		saveButton: ".saves-div .save .rollable"
+	});
+	BetterRollsHooks.addActorSheet("BetterNPCActor5eSheetDark", ".item .npc-item-name", ".item-summary", {
+		itemButton: '.item .rollable', 
+		abilityButton: ".ability h4.ability-name.rollable", 
+		checkButton: ".ability div span.ability-mod", 
+		saveButton: ".saves-div .save .rollable"
+	});
+	BetterRollsHooks.addActorSheet("ActorSheet5eCharacterDark");
+	BetterRollsHooks.addActorSheet("ActorSheet5eNPCDark");
+	BetterRollsHooks.addActorSheet("Alt5eSheet");
+	BetterRollsHooks.addItemSheet("ItemSheet5e");
+	BetterRollsHooks.addItemSheet("ItemSheet5eDark");
+	*/
+
+
 });
 
 // Modify context menu for damage rolls (they break)

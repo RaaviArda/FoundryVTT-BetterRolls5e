@@ -1,5 +1,5 @@
 import { SW5E } from "../../../systems/sw5e/module/config.js";
-import SpellCastDialog from "../../../systems/sw5e/module/apps/spell-cast-dialog.js";
+import PowerCastDialog from "../../../systems/sw5e/module/apps/power-cast-dialog.js";
 import AbilityTemplate from "../../../systems/sw5e/module/pixi/ability-template.js";
 
 import { Utils } from "./utils.js";
@@ -78,12 +78,12 @@ export function getSave(item) {
 			output = {};
 		output.ability = getProperty(itemData, "save.ability");
 		// If a DC is written in, use that by default
-		if (itemData.save.dc && itemData.save.dc != 0 && itemData.save.scaling !== "spell") { output.dc = itemData.save.dc }
+		if (itemData.save.dc && itemData.save.dc != 0 && itemData.save.scaling !== "power") { output.dc = itemData.save.dc }
 		// Otherwise, calculate one
 		else {
-			// If spell DC is calculated with normal spellcasting DC, use that
-			if (item.data.type === "spell" && itemData.save.scaling == "spell") {
-				output.dc = getProperty(item.actor,"data.data.attributes.spelldc");
+			// If power DC is calculated with normal powercasting DC, use that
+			if (item.data.type === "power" && itemData.save.scaling == "power") {
+				output.dc = getProperty(item.actor,"data.data.attributes.powerdc");
 			}
 			// Otherwise, calculate one
 			else {
@@ -114,10 +114,11 @@ function getQuickDescriptionDefault() {
 }
 
 CONFIG.betterRollsSW5e = {
-	validItemTypes: ["weapon", "spell", "equipment", "feat", "tool", "consumable"],
+	validItemTypes: ["weapon", "power", "equipment", "feat", "tool", "consumable"],
 	allFlags: {
 		weaponFlags: {
 			critRange: { type: "String", value: "" },
+			critDamage: { type: "String", value: "" },
 			quickDesc: { type: "Boolean", get value() { return getQuickDescriptionDefault() }, get altValue() { return getQuickDescriptionDefault() } },
 			quickAttack: { type: "Boolean", value: true, altValue: true },
 			quickSave: { type: "Boolean", value: false, altValue: false },
@@ -129,8 +130,9 @@ CONFIG.betterRollsSW5e = {
 			quickOther: { type: "Boolean", value: true, altValue: true, context: "" },
 			quickFlavor: { type: "Boolean", value: true, altValue: true },
 		},
-		spellFlags: {
+		powerFlags: {
 			critRange: { type: "String", value: "" },
+			critDamage: { type: "String", value: "" },
 			quickDesc: { type: "Boolean", value: true, altValue: true },
 			quickAttack: { type: "Boolean", value: true, altValue: true },
 			quickSave: { type: "Boolean", value: true, altValue: true },
@@ -144,6 +146,7 @@ CONFIG.betterRollsSW5e = {
 		},
 		equipmentFlags: {
 			critRange: { type: "String", value: "" },
+			critDamage: { type: "String", value: "" },
 			quickDesc: { type: "Boolean", value: true, altValue: true },
 			quickAttack: { type: "Boolean", value: true, altValue: true },
 			quickSave: { type: "Boolean", value: true, altValue: true },
@@ -155,6 +158,7 @@ CONFIG.betterRollsSW5e = {
 		},
 		featFlags: {
 			critRange: { type: "String", value: "" },
+			critDamage: { type: "String", value: "" },
 			quickDesc: { type: "Boolean", value: true, altValue: true },
 			quickAttack: { type: "Boolean", value: true, altValue: true },
 			quickSave: { type: "Boolean", value: true, altValue: true },
@@ -174,6 +178,7 @@ CONFIG.betterRollsSW5e = {
 		},
 		consumableFlags: {
 			critRange: { type: "String", value: "" },
+			critDamage: { type: "String", value: "" },
 			quickDesc: { type: "Boolean", value: true, altValue: true },
 			quickAttack: { type: "Boolean", value: true, altValue: true },
 			quickSave: { type: "Boolean", value: true, altValue: true },
@@ -253,7 +258,7 @@ async function addButtonsToItemLi(li, actor, buttonContainer) {
     switch (item.data.type) {
         case 'weapon':
         case 'feat':
-        case 'spell':
+        case 'power':
         case 'consumable':
             buttonsWereAdded = true;
             if (diceEnabled) buttons.append(`<span class="tag"><button data-action="quickRoll">${i18n("br5e.buttons.roll")}</button></span>`);
@@ -370,8 +375,8 @@ async function addButtonsToItemLi(li, actor, buttonContainer) {
                 case 'weaponAttack': item.rollWeaponAttack(ev); break;
                 case 'weaponDamage': item.rollWeaponDamage(ev); break;
                 case 'weaponDamage2': item.rollWeaponDamage(ev, true); break;
-                case 'spellAttack': item.rollSpellAttack(ev); break;
-                case 'spellDamage': item.rollSpellDamage(ev); break;
+                case 'powerAttack': item.rollPowerAttack(ev); break;
+                case 'powerDamage': item.rollPowerDamage(ev); break;
                 case 'featAttack': item.rollFeatAttack(ev); break;
                 case 'featDamage': item.rollFeatDamage(ev); break;
                 case 'consume': item.rollConsumable(ev); break;
@@ -440,10 +445,12 @@ export async function addBetterRollsContent(item, protoHtml, data) {
 	
 	let betterRollsTemplateString = `modules/betterrollssw5e/templates/red-item-options.html`,
 		altSecondaryEnabled = game.settings.get("betterrollssw5e", "altSecondaryEnabled");
+	let canConsume = item.data.data.consume?.type || item.data.data.uses?.per || item.data.data.recharge?.value || item.data.type == "consumable";
+	
 	let betterRollsTemplate = await renderTemplate(betterRollsTemplateString, {
 		SW5E: CONFIG.SW5E,
 		item: item,
-		isConsumable: item.data.type == "consumable" ? true : false,
+		isConsumable: canConsume,
 		isAttack: isAttack(item),
 		isSave: isSave(item),
 		flags: item.data.flags,
@@ -451,7 +458,7 @@ export async function addBetterRollsContent(item, protoHtml, data) {
 		altSecondaryEnabled: altSecondaryEnabled,
 		itemHasTemplate: item.hasAreaTarget
 	});
-	let extraTab = settingsContainer.append(betterRollsTemplate);
+	let extraTabContent = settingsContainer.append(betterRollsTemplate);
 	
 	// Add damage context input
 	if (game.settings.get("betterrollssw5e", "damageContextPlacement") !== "0") {
@@ -558,8 +565,7 @@ export function changeRollsToDual (actor, html, data, params) {
 			event.preventDefault();
 			let ability = getAbility(event.currentTarget),
 				abl = actor.data.data.abilities[ability];
-			//console.log("Ability: ", ability);
-			if ( event.ctrlKey ) {
+			if ( keyboard.isCtrl(event) ) {
 				CustomRoll.fullRollAttribute(actor, ability, "check");
 			} else if ( event.shiftKey ) {
 				CustomRoll.fullRollAttribute(actor, ability, "save");
@@ -632,7 +638,7 @@ export function changeRollsToDual (actor, html, data, params) {
 			let li = $(event.currentTarget).parents(".item"),
 				item = actor.getOwnedItem(String(li.attr("data-item-id"))),
 				params = CustomRoll.eventToAdvantage(event);
-				console.log(item);
+				//console.log(item);
 			if (!game.settings.get("betterrollssw5e", "imageButtonEnabled")) {
 				item.actor.sheet._onItemRoll(event);
 			} else if (event.altKey) {
@@ -650,6 +656,17 @@ export function changeRollsToDual (actor, html, data, params) {
 	}
 }
 
+// Creates message out of a Custom Roll. Rolls the necessary 3D dice using the custom roll data, only rendering the message when the roll is finished.
+export async function createMessage(customRoll) {
+	if (game.dice3d && customRoll.dicePool) {
+		let wd = getWhisperData();
+		game.dice3d.showForRoll(customRoll.dicePool, game.user, true, wd.whisper, wd.blind || false).then(async () => { let output = await ChatMessage.create(customRoll.chatData); return output; });
+	} else {
+		let output = await ChatMessage.create(customRoll.chatData);
+		return output;
+	}
+}
+
 // Frontend for macros
 export function BetterRolls() {
 	async function assignMacro(item, slot, mode) {
@@ -657,6 +674,7 @@ export function BetterRolls() {
 			switch (mode) {
 				case "name": return `BetterRolls.quickRoll("${item.name}");`; break;
 				case "id": return `BetterRolls.quickRollById("${item.actorId}", "${item.data._id}");`; break;
+				case "vanillaRoll": return `BetterRolls.vanillaRoll("${item.actorId}", "${item.data._id}");`; break;
 			}
 		}
 		let macro = game.macros.entities.find(m => (m.name === item.name) && (m.command === command));
@@ -671,20 +689,30 @@ export function BetterRolls() {
 		}
 		game.user.assignHotbarMacro(macro, slot);
 	};
+
+	// Performs a vanilla roll message, searching the actor and item by ID.
+	function vanillaRoll(actorId, itemId) {
+		let actor = getActorById(actorId);
+		if (!actor) { return ui.notifications.warn(`${i18n("br5e.error.noActorWithId")}`); }
+		let item = actor.getOwnedItem(itemId);
+		if (!item) { return ui.notifications.warn(`${i18n("br5e.error.noItemWithId")}`); }
+		if (actor.permission != 3) { return ui.notifications.warn(`${i18n("br5e.error.noActorPermission")}`); }
+		item.roll()
+	};
 	
+	// Performs a Quick Roll, searching for an item in the controlled actor by name.
 	function quickRoll(itemName) {
 		let speaker = ChatMessage.getSpeaker();
-		let actor;
-		if (speaker.token) actor = game.actors.tokens[speaker.token];
-		if (!actor) actor = game.actors.get(speaker.actor);
+		let actor = getActorById(speaker.actor);
 		let item = actor ? actor.items.find(i => i.name === itemName) : null;
 		if (!actor) { return ui.notifications.warn(`${i18n("br5e.error.noSelectedActor")}`); }
 		else if (!item) { return ui.notifications.warn(`${actor.name} ${i18n("br5e.error.noKnownItemOnActor")} ${itemName}`); }
 		new CustomItemRoll(item, {event:event, preset:(isAlt(event) ? 1 : 0)}).toMessage();
 	};
 	
+	// Performs a Quick Roll, searching the actor and item by ID.
 	function quickRollById(actorId, itemId) {
-		let actor = game.actors.get(actorId);
+		let actor = getActorById(actorId);
 		if (!actor) { return ui.notifications.warn(`${i18n("br5e.error.noActorWithId")}`); }
 		let item = actor.getOwnedItem(itemId);
 		if (!item) { return ui.notifications.warn(`${i18n("br5e.error.noItemWithId")}`); }
@@ -692,8 +720,9 @@ export function BetterRolls() {
 		new CustomItemRoll(item, {event:event, preset:(isAlt(event) ? 1 : 0)}).toMessage();
 	};
 	
+	// Performs a Quick Roll, searching the actor and item by name.
 	function quickRollByName(actorName, itemName) {
-		let actor = game.actors.entities.find(i => i.name === actorName);
+		let actor = getActorByName(actorName);
 		if (!actor) { return ui.notifications.warn(`${i18n("br5e.error.noKnownActorWithName")}`); }
 		let item = actor.items.find(i => i.name === itemName);
 		if (!item) { return ui.notifications.warn(`${actor.name} ${i18n("br5e.error.noKnownItemOnActor")} ${itemName}`); }
@@ -701,24 +730,46 @@ export function BetterRolls() {
 		new CustomItemRoll(item, {event:event, preset:(isAlt(event) ? 1 : 0)}).toMessage();
 	};
 	
+	// Returns if an event should have its corresponding Quick Roll be an Alt Roll.
 	function isAlt(event) {
 		if (event && event.altKey && game.settings.get("betterrollssw5e", "altSecondaryEnabled")) { return true; }
 		else { return false; }
 	};
+
+	// Prefer synthetic actors over game.actors to avoid consumables and spells being missdepleted.
+	function getActorById(actorId) {
+		let actor = canvas.tokens.placeables.find(t => t.actor?._id === actorId)?.actor;
+		if (!actor) actor = game.actors.entities.find(a => a._id === actorId);
+		return actor;
+	}
+
+	// Prefer token actors over game.actors to avoid consumables and spells being missdepleted.
+	function getActorByName(actorName) {
+		let actor = canvas.tokens.placeables.find(p => p.data.name === actorName).actor;
+		if (!actor) actor = game.actors.entities.find(e => e.name === actorName);
+		return actor;
+	}
 	
 	Hooks._hooks.hotbarDrop = [(bar, data, slot) => {
 		if ( data.type !== "Item" ) return true;
-		assignMacro(data, slot, "id");
+		if (event && event.altKey) { // not using isAlt(event) because it's not related to alternative roll
+			assignMacro(data, slot, "vanillaRoll");
+		} else {
+			assignMacro(data, slot, "id");
+		}
 		return false;
     }].concat(Hooks._hooks.hotbarDrop || []);
 	
 	return {
 		assignMacro:assignMacro,
+		vanillaRoll:vanillaRoll,
 		quickRoll:quickRoll,
 		quickRollById:quickRollById,
 		quickRollByName:quickRollByName,
 		addItemContent:BetterRollsHooks.addItemContent,
 		hooks:BetterRollsHooks,
+		rollCheck:CustomRoll.rollCheck,
+		rollSave:CustomRoll.rollSave,
 		rollAbilityCheck:CustomRoll.rollAbilityCheck,
 		rollSavingThrow:CustomRoll.rollAbilitySave,
 		rollSkill:CustomRoll.fullRollSkill,

@@ -81,7 +81,8 @@
 }
 
 .sw5e.sheet.item .item-betterRolls label.checkbox {
-    display: flex;
+		display: inline-table;
+		padding: 0px 8px;
 }
 
 .card-buttons .adice5e.dmg.rolled {
@@ -114,4 +115,8 @@
 
 .better-npc-sheet .item.expanded .item-summary .item-buttons {
     line-height: 22px;
+}
+
+.sw5e .item-betterRolls label.checkbox input[type="checkbox"] {
+	top: 0px;
 }
