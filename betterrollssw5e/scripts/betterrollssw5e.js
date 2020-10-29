@@ -1,5 +1,4 @@
 import { SW5E } from "../../../systems/sw5e/module/config.js";
-import PowerCastDialog from "../../../systems/sw5e/module/apps/power-cast-dialog.js";
 import AbilityTemplate from "../../../systems/sw5e/module/pixi/ability-template.js";
 
 import { Utils } from "./utils.js";

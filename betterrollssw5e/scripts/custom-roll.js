@@ -2,7 +2,6 @@ import { i18n, hasMaestroSound, isAttack, isSave, getSave, isCheck, redUpdateFla
 import { Utils } from "./utils.js";
 
 import { SW5E } from "../../../systems/sw5e/module/config.js";
-import PowerCastDialog from "../../../systems/sw5e/module/apps/power-cast-dialog.js";
 import AbilityTemplate from "../../../systems/sw5e/module/pixi/ability-template.js";
 
 let sw5e = SW5E;
